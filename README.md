@@ -4,4 +4,5 @@
 
 ## Diagrams.
 
-![CUserCaseDiagram](Docs/Diagram/UserCaseDiagram.png)
+![UserCaseDiagram](Docs/Diagram/UserCaseDiagram.png)
+![ClassDiagram](Docs/Diagram/ClassDiagram.png)
