@@ -4,8 +4,46 @@
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="LE0V1J_PMROk5azrnwEu-1" parent="1" style="swimlane;whiteSpace=wrap;html=1;" value="&lt;div&gt;Connexion&lt;/div&gt;" vertex="1">
-          <mxGeometry height="500" width="790" x="30" y="20" as="geometry" />
+        <mxCell id="JhZQja9qUgJmQCY2rSHX-4" edge="1" parent="1" source="JhZQja9qUgJmQCY2rSHX-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="JhZQja9qUgJmQCY2rSHX-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="JhZQja9qUgJmQCY2rSHX-5" edge="1" parent="1" source="JhZQja9qUgJmQCY2rSHX-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="JhZQja9qUgJmQCY2rSHX-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="JhZQja9qUgJmQCY2rSHX-1" parent="1" style="rhombus;whiteSpace=wrap;html=1;" value="Connexion" vertex="1">
+          <mxGeometry height="80" width="80" x="40" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="JhZQja9qUgJmQCY2rSHX-2" parent="1" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" value="Saisie identifiant/Mot de passe" vertex="1">
+          <mxGeometry height="80" width="210" x="140" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="JhZQja9qUgJmQCY2rSHX-9" edge="1" parent="1" source="JhZQja9qUgJmQCY2rSHX-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="JhZQja9qUgJmQCY2rSHX-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="JhZQja9qUgJmQCY2rSHX-3" parent="1" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" value="Session/cookie présents" vertex="1">
+          <mxGeometry height="80" width="210" x="140" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="JhZQja9qUgJmQCY2rSHX-7" parent="1" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" value="Nettoyage des variables" vertex="1">
+          <mxGeometry height="80" width="120" x="330" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="JhZQja9qUgJmQCY2rSHX-8" parent="1" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" value="Vérification des informations" vertex="1">
+          <mxGeometry height="80" width="120" x="430" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="JhZQja9qUgJmQCY2rSHX-12" edge="1" parent="1" source="JhZQja9qUgJmQCY2rSHX-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="JhZQja9qUgJmQCY2rSHX-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="JhZQja9qUgJmQCY2rSHX-10" parent="1" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" value="Création d&#39;un Item Connexion" vertex="1">
+          <mxGeometry height="80" width="140" x="530" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="JhZQja9qUgJmQCY2rSHX-13" edge="1" parent="1" source="JhZQja9qUgJmQCY2rSHX-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="JhZQja9qUgJmQCY2rSHX-3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="130" y="220" />
+              <mxPoint x="130" y="170" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="JhZQja9qUgJmQCY2rSHX-11" parent="1" style="shape=dataStorage;whiteSpace=wrap;html=1;fixedSize=1;" value="Sauvegarde en session/cookie" vertex="1">
+          <mxGeometry height="80" width="210" x="495" y="180" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
