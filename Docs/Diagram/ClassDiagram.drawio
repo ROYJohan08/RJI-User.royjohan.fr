@@ -238,6 +238,11 @@
         <mxCell id="YFNzyf8yGgE6tc8R6vnn-9" parent="YFNzyf8yGgE6tc8R6vnn-4" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ Save(User:User,Tech:Tech):boolean" vertex="1">
           <mxGeometry height="26" width="370" y="112" as="geometry" />
         </mxCell>
+        <mxCell id="YUub7wrq3hbkpWvr9j88-27" edge="1" parent="YFNzyf8yGgE6tc8R6vnn-4" source="YFNzyf8yGgE6tc8R6vnn-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="-530.0000000000002" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
         <mxCell id="YFNzyf8yGgE6tc8R6vnn-10" parent="YFNzyf8yGgE6tc8R6vnn-4" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ Delete(User:User,Tech:Tech):boolean" vertex="1">
           <mxGeometry height="26" width="370" y="138" as="geometry" />
         </mxCell>
@@ -337,15 +342,6 @@
               <mxPoint x="-240" y="940" />
               <mxPoint x="-240" y="726" />
               <mxPoint x="-80" y="726" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="YFNzyf8yGgE6tc8R6vnn-68" edge="1" parent="WIyWlLk6GJQsqaUBKTNV-1" source="YFNzyf8yGgE6tc8R6vnn-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ah27P0a9SmFJT5wW4t-G-95">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="-240" y="1145" />
-              <mxPoint x="-240" y="720" />
-              <mxPoint x="-80" y="720" />
             </Array>
           </mxGeometry>
         </mxCell>
