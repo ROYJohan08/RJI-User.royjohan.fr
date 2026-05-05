@@ -259,8 +259,8 @@ class Check{
         if (strtolower(substr($Value, 0, 1)) === strtolower($Prefix)) {
             $Value = substr($Value, 1);
         }
-        Log::Add("$Label correct : " . $value, 0);
-        return $value;
+        Log::Add("$Label correct : " . $Value, 0);
+        return $Value;
     }
 }
 
