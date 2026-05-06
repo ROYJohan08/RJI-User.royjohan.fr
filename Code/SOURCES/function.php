@@ -440,7 +440,7 @@ class UserController {
     public function __construct(private PDO $database) {}
 
     public function getByUid(string|int $uid): ?User {
-        $uid = Check::uid($uid);
+        $uid = Check::uid((string)$uid);
 		if ($uid === 0){return null;}
         try {
             $stmt = $this->database->prepare(
@@ -563,14 +563,14 @@ class UserController {
 
     private function fetchUid(string $sql, string $value): ?int {
         try {
-            $stmt = $this->database->prepare($sql);
-            $stmt->execute([$value]);
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            return $result ? $result['uid'] : null;
-        } catch (Throwable $e) {
-            Error::add("Erreur fetchUid : " . $e->getMessage(), ErrorLevel::ERROR);
-            return null;
-        }
+			$stmt = $this->database->prepare($sql);
+			$stmt->execute([$value]);
+			$result = $stmt->fetch(PDO::FETCH_ASSOC);
+			return $result ? (int)$result['uid'] : null;
+		} catch (Throwable $e) {
+			Error::add("Erreur fetchUid : " . $e->getMessage(), ErrorLevel::ERROR);
+			return null;
+		}
     }
 }
 
@@ -598,7 +598,7 @@ class Tech{
     public function getLevel(): ?TechLevel {return $this->level;}
     public function getToken(): ?string {return $this->token;}
 	
-	public function setTid(?string $v): void { if ($v === null) {return;}$this->tid = Check::tid($v); }
+	public function setTid(int|string|null $v): void { if ($v === null) {return;}$this->tid = Check::tid($v); }
     public function setUser(User|null $v): void {if ($v instanceof User) {$this->user = $v;}else {$this->user = null;}}
 	public function setLevel(TechLevel|null $v): void {if ($v instanceof TechLevel) {$this->level = $v;}else {$this->level = null;}}
     public function setToken(?string $v): void {$this->token = $v !== null ? Check::token($v) : null;}
@@ -608,7 +608,7 @@ class Tech{
 class TechController{
 	public function __construct(private PDO $database) {}
 	
-	public function getByTid(string $tid):?Tech{
+	public function getByTid(int|string $tid):?Tech{
 		$tid = Check::tid($tid);
         if ($tid === 0) return null;
 
@@ -617,7 +617,7 @@ class TechController{
                 'SELECT `tid`,`uid`,`level`,`token`
                  FROM `Tech` WHERE `tid` = ? LIMIT 1'
             );
-            $stmt->execute([$uid]);
+            $stmt->execute([$tid]);
             $data = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$data) return null;
@@ -626,24 +626,28 @@ class TechController{
             return $tech;
 
         } catch (Throwable $e) {
-            Error::add("Erreur getByUid : " . $e->getMessage(), ErrorLevel::ERROR);
+            Error::add("Erreur getByTid : " . $e->getMessage(), ErrorLevel::ERROR);
             return null;
         }
 	}
 	public function getByUid(string $uid):?Tech{
-		return $this->getByTid($this->fetchTid(
+		$tid=$this->fetchTid(
             'SELECT `tid` FROM `Tech` WHERE `uid` = ? LIMIT 1',
             $uid
-        ));
+        );
+		if ($tid === null) return null;
+		return $this->getByTid($tid);
 	}
 	public function getByCid(string $cid):?Tech{
-		return $this->getByUid($this->fetchTid(
+		$tid=$this->fetchTid(
             'SELECT `uid` FROM `Connexion` WHERE `cid` = ? LIMIT 1',
             $cid
-        ));
+        );
+		if ($tid === null) return null;
+		return $this->getByTid($tid);
 	}
 	public function delete(Tech $techToDelete, Tech $tech): bool {
-		if ($techToDelete->getTid() === 0 || $tech->getTid() === 0) {
+		if ($techToDelete->getTid() === null || $techToDelete->getTid() <= 0 || $tech->getTid() === null || $tech->getTid() <= 0) {
 			Error::add("IDs invalides pour la suppression", ErrorLevel::WARNING);
 			return false;
 		}
@@ -673,7 +677,7 @@ class TechController{
             $stmt = $this->database->prepare($sql);
             $stmt->execute([$value]);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            return $result ? $result['tid'] : null;
+            return $result ? (int)$result['tid'] : null;
         } catch (Throwable $e) {
             Error::add("Erreur fetchUid : " . $e->getMessage(), ErrorLevel::ERROR);
             return null;
