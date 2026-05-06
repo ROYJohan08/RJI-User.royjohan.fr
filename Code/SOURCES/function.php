@@ -1,10 +1,17 @@
 <?php
+require_once("config.php");
 
 enum ErrorLevel: int {
     case ALL = 0;
 	case INFO = 1;
     case WARNING = 2;
     case ERROR = 3;
+}
+enum TechLevel: int {
+    case COMPTA = 0;
+	case TECH = 1;
+    case COMM = 2;
+    case ADMIN = 3;
 }
 
 class ErrorItem{
@@ -210,32 +217,45 @@ class Check{
 	
 	public static function tech(?Tech $tech): bool {
 		if ($tech === null) {
-			Error::add("Tech vide", ErrorLevel::WARNING);[cite: 1]
+			Error::add("Tech vide", ErrorLevel::WARNING);
 			return false;
 		}
 		$tid = $tech->getTid();
 		if (empty($tid) || $tid === 0) {
-			Error::add("Tid incorrect", ErrorLevel::WARNING);[cite: 1]
+			Error::add("Tid incorrect", ErrorLevel::WARNING);
 			return false;
 		}
 
 		$token = $tech->getToken();
-		$data = Utils::decodeJwt($token, "./public.key"); 
+		$data = Utils::decodeJwt($token, Config::getKeyPath(2)); 
 		if ($data === null) {
-			Error::add("JWT incorrect", ErrorLevel::WARNING);[cite: 1]
+			Error::add("JWT incorrect", ErrorLevel::WARNING);
 			return false;
 		}
 		if (!isset($data["data"]["tid"])) {
-			Error::add("JWT incomplet", ErrorLevel::WARNING);[cite: 1]
+			Error::add("JWT incomplet", ErrorLevel::WARNING);
 			return false;
 		}
 		if ($data["data"]["tid"] !== $tid) {
-			Error::add("JWT ne correspond pas", ErrorLevel::WARNING);[cite: 1]
+			Error::add("JWT ne correspond pas", ErrorLevel::WARNING);
 			return false;
 		}
 		return true;
 	}
-		
+	
+	public static function futureDate(mixed $value): ?\DateTimeImmutable{
+		if (!$value instanceof \DateTimeImmutable) {
+			Error::add("Date invalide : doit être un DateTimeImmutable", ErrorLevel::WARNING);
+			return null;
+		}
+		$now = new \DateTimeImmutable('now');
+		if ($value <= $now) {
+			Error::add("Date invalide : doit être dans le futur", ErrorLevel::WARNING);
+			return null;
+		}
+		return $value;
+	}
+	
 	private static function validateId(string $value, string $prefix, string $label): string{
         $value = trim($value);
         if ($value === '') {
@@ -249,6 +269,7 @@ class Check{
         if (strtolower($value[0]) === strtolower($prefix)) {
             $value = substr($value, 1);
         }
+		if(!is_numeric($value)){return "";}
         return $value;
     }
 }
@@ -274,13 +295,13 @@ class Utils{
 	}
 	public static function  decodeJwt(string $token, string $publicKeyPath): ?array {
 		if (!file_exists($publicKeyPath)) {
-			Error::add("Clé publique introuvable", ErrorLevel::ERROR);[cite: 1]
+			Error::add("Clé publique introuvable", ErrorLevel::ERROR);
 			return null;
 		}
 		$publicKey = file_get_contents($publicKeyPath);
 		$parts = explode('.', $token);
 		if (count($parts) !== 3) {
-			Error::add("Format de token invalide", ErrorLevel::WARNING);[cite: 1]
+			Error::add("Format de token invalide", ErrorLevel::WARNING)
 			return null;
 		}
 		[$header64, $payload64, $signature64] = $parts;
@@ -295,12 +316,12 @@ class Utils{
 		if ($isValid === 1) {
 			$payload = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $payload64)), true);
 			if (isset($payload['exp']) && $payload['exp'] < time()) {
-				Error::add("Le token a expiré", ErrorLevel::WARNING);[cite: 1]
+				Error::add("Le token a expiré", ErrorLevel::WARNING);
 				return null;
 			}        
 			return $payload;
 		} 
-		Error::add("Signature JWT invalide", ErrorLevel::WARNING);[cite: 1]
+		Error::add("Signature JWT invalide", ErrorLevel::WARNING);
 		return null;
 	}
 }
@@ -345,7 +366,7 @@ class User{
     public function getPortable(): ?string { return $this->portable; }
     public function getSiren(): ?string { return $this->siren; }
 
-    public function setUid(?string $v): void { $this->uid = $v !== null ? Check::uid($v) : null; }
+    public function setUid(?string $v): void { if ($v === null) {return;}$this->uid = Check::uid($v); }
     public function setUsername(?string $v): void {$this->username = $v !== null ? Check::username($v) : null;}
     public function setNom(?string $v): void { $this->nom = $v !== null ? Check::nom($v) : null; }
     public function setPrenom(?string $v): void {$this->prenom = $v !== null ? Check::prenom($v) : null; }
@@ -358,7 +379,6 @@ class User{
     public function setPortable(?string $v): void { $this->portable = $v !== null ? Check::portable($v) : null; }
     public function setSiren(?string $v): void { $this->siren = $v !== null ? Check::siren($v) : null; }
 }
-
 
 class UserController {
 
@@ -378,8 +398,7 @@ class UserController {
 
             if (!$data) return null;
 
-            $user = new User();
-            $user->hydrate($data);
+            $user = new User($data);
             return $user;
 
         } catch (Throwable $e) {
@@ -495,5 +514,141 @@ class UserController {
     }
 }
 
+class Tech{
+	private ?string       $tid=null;
+	private ?User      $user=null;
+	private ?TechLevel $level = null;
+	private ?string    $token = null;
+
+    public function __construct(array $data = []) {
+        $this->hydrate($data);
+    }
+
+    public function hydrate(array $data): void {
+        foreach ($data as $key => $value) {
+            $method = "set" . ucfirst(Utils::toCamelCase($key));
+            if (method_exists($this, $method)) {
+                $this->$method($value);
+            }
+        }
+	}
+    
+	public function getTid(): ?string {return $this->tid;}
+    public function getUser(): ?User {return $this->user;}
+    public function getLevel(): ?TechLevel {return $this->level;}
+    public function getToken(): ?string {return $this->token;}
+	
+	public function setTid(?string $v): void { if ($v === null) {return;}$this->tid = Check::tid($v); }
+    public function setUser(User|null $v): void {if ($v instanceof User) {$this->user = $v;}else {$this->user = null;}}
+	public function setLevel(TechLevel|null $v): void {if ($v instanceof TechLevel) {$this->level = $v;}else {$this->level = null;}}
+    public function setToken(?string $v): void {$this->token = $v !== null ? Check::token($v) : null;}
+	
+}
+
+class TechController{
+	public function __construct(private PDO $database) {}
+	
+	public function getByTid(string $tid):?Tech{
+		$tid = Check::tid($tid);
+        if ($tid === "") return null;
+
+        try {
+            $stmt = $this->database->prepare(
+                'SELECT `tid`,`uid`,`level`,`token`
+                 FROM `Tech` WHERE `tid` = ? LIMIT 1'
+            );
+            $stmt->execute([$uid]);
+            $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$data) return null;
+
+            $tech = new Tech($data);
+            return $tech;
+
+        } catch (Throwable $e) {
+            Error::add("Erreur getByUid : " . $e->getMessage(), ErrorLevel::ERROR);
+            return null;
+        }
+	}
+	public function getByUid(string $uid):?Tech{
+		return $this->getByTid($this->fetchTid(
+            'SELECT `tid` FROM `Tech` WHERE `uid` = ? LIMIT 1',
+            $uid
+        ));
+	}
+	public function getByCid(string $cid):?Tech{
+		return $this->getByUid($this->fetchTid(
+            'SELECT `uid` FROM `Connexion` WHERE `cid` = ? LIMIT 1',
+            $cid
+        ));
+	}
+	public function delete(Tech $techToDelete, Tech $tech): bool {
+		if ($techToDelete->getTid() === 0 || $tech->getTid() === 0) {
+			Error::add("IDs invalides pour la suppression", ErrorLevel::WARNING);
+			return false;
+		}
+		if (!Check::tech($tech)) {
+			Error::add("Technicien effectuant l'action invalide", ErrorLevel::WARNING);
+			return false;
+		}
+		if ($tech->getLevel()->value <= $techToDelete->getLevel()->value) {
+			Error::add("Permissions insuffisantes : niveau supérieur requis", ErrorLevel::WARNING);
+			return false;
+		}
+		try {
+			$stmt = $this->database->prepare('DELETE FROM `Tech` WHERE `tid` = ?');
+			$ok = $stmt->execute([$techToDelete->getTid()]);
+			if ($ok && $stmt->rowCount() > 0) {
+				return true;
+			}
+			Error::add("Aucun enregistrement supprimé", ErrorLevel::WARNING);
+			return false;
+		} catch (Throwable $e) {
+			Error::add("Erreur lors de la suppression Tech : " . $e->getMessage(), ErrorLevel::ERROR);
+			return false;
+		}
+	}
+	private function fetchTid(string $sql, string $value):?int{
+		try {
+            $stmt = $this->database->prepare($sql);
+            $stmt->execute([$value]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $result ? $result['tid'] : null;
+        } catch (Throwable $e) {
+            Error::add("Erreur fetchUid : " . $e->getMessage(), ErrorLevel::ERROR);
+            return null;
+        }
+	}
+	
+}
+
+
+class Connexion{
+	private ?int               $cid=null;
+	private ?string            $uid=null;
+	private ?string            $token=null;
+	private ?DateTimeImmutable $tokenValidity=null;
+	
+	public function __construct(array $data){
+		$this->hydrate($data);
+	}
+	public function hydrate(array $data): void{
+        foreach ($data as $key => $value) {
+            $method = "set" . ucfirst(Utils::toCamelCase($key));
+            if (method_exists($this, $method)) {
+                $this->$method($value);
+            }
+        }
+    }
+	public function getCid():?int{return $this->cid;}
+	public function getUid():?int{return $this->uid;}
+	public function getToken():?string{return $this->token;}
+	public function getTokenValidity():?DateTimeImmutable{return $this->tokenValidity;}
+	
+	public function setUid(?string $v): void { $this->uid = $v !== null ? Check::uid($v) : null; }
+	public function setToken(?string $v): void { $this->token = $v !== null ? Check::Token($v) : null; }
+	public function setTokenValidity(?string $v): void { $this->tokenValidity = $v !== null ? Check::futureDate($v) : null; }
+	
+}
 
 ?>
