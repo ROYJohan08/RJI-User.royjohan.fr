@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net">
   <diagram name="Page-1" id="qI8pYdogJBFRX6iDw2b5">
-    <mxGraphModel dx="4723" dy="2146" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1347" dy="715" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -75,61 +75,67 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-108" parent="1" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" value="Stockage informations" vertex="1">
-          <mxGeometry height="80" width="120" x="1210" y="130" as="geometry" />
+          <mxGeometry height="80" width="120" x="1460" y="130" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-109" parent="1" style="shape=dataStorage;whiteSpace=wrap;html=1;fixedSize=1;" value="Session=&amp;gt;&lt;div&gt;Connexion&lt;/div&gt;" vertex="1">
-          <mxGeometry height="80" width="110" x="1215" y="240" as="geometry" />
+          <mxGeometry height="80" width="110" x="1465" y="240" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-110" edge="1" parent="1" source="mk5-3hTQDrxi4xregeRT-111" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="mk5-3hTQDrxi4xregeRT-112">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-111" parent="1" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" value="Récupération des informations User" vertex="1">
-          <mxGeometry height="80" width="150" x="1310" y="130" as="geometry" />
+          <mxGeometry height="80" width="150" x="1560" y="130" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-112" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;" value="User" vertex="1">
-          <mxGeometry height="80" width="60" x="1355" y="240" as="geometry" />
+          <mxGeometry height="80" width="60" x="1605" y="240" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-113" edge="1" parent="1" source="mk5-3hTQDrxi4xregeRT-114" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="mk5-3hTQDrxi4xregeRT-115">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-114" parent="1" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" value="Stockage informations" vertex="1">
-          <mxGeometry height="80" width="120" x="1440" y="130" as="geometry" />
+          <mxGeometry height="80" width="120" x="1690" y="130" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-115" parent="1" style="shape=dataStorage;whiteSpace=wrap;html=1;fixedSize=1;" value="&lt;div&gt;Session=&amp;gt;&lt;/div&gt;&lt;div&gt;User&lt;/div&gt;" vertex="1">
-          <mxGeometry height="80" width="110" x="1445" y="240" as="geometry" />
+          <mxGeometry height="80" width="110" x="1695" y="240" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-116" edge="1" parent="1" source="mk5-3hTQDrxi4xregeRT-117" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="mk5-3hTQDrxi4xregeRT-118">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-117" parent="1" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" value="Récupération des informations Tech" vertex="1">
-          <mxGeometry height="80" width="150" x="1540" y="130" as="geometry" />
+          <mxGeometry height="80" width="150" x="1790" y="130" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-118" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;" value="Tech" vertex="1">
-          <mxGeometry height="80" width="60" x="1585" y="240" as="geometry" />
+          <mxGeometry height="80" width="60" x="1835" y="240" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-119" edge="1" parent="1" source="mk5-3hTQDrxi4xregeRT-120" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="mk5-3hTQDrxi4xregeRT-121">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-120" parent="1" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" value="Stockage informations" vertex="1">
-          <mxGeometry height="80" width="120" x="1670" y="130" as="geometry" />
+          <mxGeometry height="80" width="120" x="1920" y="130" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-121" parent="1" style="shape=dataStorage;whiteSpace=wrap;html=1;fixedSize=1;" value="&lt;div&gt;Session=&amp;gt;&lt;/div&gt;&lt;div&gt;Tech&lt;/div&gt;" vertex="1">
-          <mxGeometry height="80" width="110" x="1675" y="240" as="geometry" />
+          <mxGeometry height="80" width="110" x="1925" y="240" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-122" edge="1" parent="1" source="mk5-3hTQDrxi4xregeRT-123" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="mk5-3hTQDrxi4xregeRT-125">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-123" parent="1" style="rhombus;whiteSpace=wrap;html=1;" value="Mémoriser" vertex="1">
-          <mxGeometry height="80" width="80" x="1790" y="130" as="geometry" />
+          <mxGeometry height="80" width="80" x="2040" y="130" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-124" edge="1" parent="1" source="mk5-3hTQDrxi4xregeRT-125" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="mk5-3hTQDrxi4xregeRT-126">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-125" parent="1" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" value="Stockage des informations" vertex="1">
-          <mxGeometry height="80" width="120" x="1880" y="130" as="geometry" />
+          <mxGeometry height="80" width="120" x="2130" y="130" as="geometry" />
         </mxCell>
         <mxCell id="mk5-3hTQDrxi4xregeRT-126" parent="1" style="shape=dataStorage;whiteSpace=wrap;html=1;fixedSize=1;" value="&lt;div&gt;Cookies=&amp;gt;&lt;/div&gt;&lt;div&gt;Connexion&lt;/div&gt;" vertex="1">
-          <mxGeometry height="80" width="110" x="1885" y="240" as="geometry" />
+          <mxGeometry height="80" width="110" x="2135" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="0UD_ZfnBvAZolv-wygzk-1" parent="1" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" value="Generation d&#39;un token" vertex="1">
+          <mxGeometry height="80" width="165" x="1215" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="0UD_ZfnBvAZolv-wygzk-2" parent="1" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" value="Création du Connexion" vertex="1">
+          <mxGeometry height="80" width="120" x="1360" y="130" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
