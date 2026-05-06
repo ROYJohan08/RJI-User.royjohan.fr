@@ -1,74 +1,102 @@
 <?php
 require_once("config.php");
 
+declare(strict_types=1);
+
 enum ErrorLevel: int {
-    case ALL = 0;
-	case INFO = 1;
+    case ALL     = 0;
+    case INFO    = 1;
     case WARNING = 2;
-    case ERROR = 3;
+    case ERROR   = 3;
 }
+
 enum TechLevel: int {
     case COMPTA = 0;
-	case TECH = 1;
-    case COMM = 2;
-    case ADMIN = 3;
+    case TECH   = 1;
+    case COMM   = 2;
+    case ADMIN  = 3;
 }
 
-class ErrorItem{
-    public function __construct(public readonly string $content,public readonly ErrorLevel $level,public readonly \DateTimeImmutable $date) {}
+class ErrorItem {
+    public function __construct(
+        public readonly string $content,
+        public readonly ErrorLevel $level,
+        public readonly \DateTimeImmutable $date
+    ) {}
 }
 
-class Error{
+class Error {
+
+    /** @var ErrorItem[] */
     private static array $errors = [];
 
-    public static function add(string $content, ErrorLevel $level): bool{
+    public static function add(string $content, ErrorLevel $level): bool {
         $content = trim(strip_tags($content));
         if (strlen($content) < 5) {
             return false;
         }
-        if (class_exists('Transliterator')) {
+
+        if (class_exists(\Transliterator::class)) {
             $trans = \Transliterator::create('Any-Latin; Latin-ASCII');
-            $content = $trans->transliterate($content);
+            if ($trans !== null) {
+                $content = $trans->transliterate($content);
+            }
         }
-        $content = htmlspecialchars($Content, ENT_QUOTES, 'UTF-8');
-        self::$errors[] = new ErrorItem(Content: $content,Level: $level,Date: new \DateTimeImmutable());
+
+        $content = htmlspecialchars($content, ENT_QUOTES, 'UTF-8');
+
+        self::$errors[] = new ErrorItem(
+            content: $content,
+            level: $level,
+            date: new \DateTimeImmutable()
+        );
+
         self::sort();
         return true;
     }
-   
-   public static function get(?ErrorLevel $level = null): array{
-        if ($level === null || $level=== ErrorLevel::ALL) {
+
+    /** @return ErrorItem[] */
+    public static function get(?ErrorLevel $level = null): array {
+        if ($level === null || $level === ErrorLevel::ALL) {
             return self::$errors;
         }
-        return array_values(array_filter(self::$errors,fn(ErrorItem $e) => $e->level === $level));
-    }
-   
-   public static function clear(): void{
-		self::$errors = [];
-	}
 
-    private static function sort(): void{
-        usort(self::$errors, fn(ErrorItem $a, ErrorItem $b) =>
-            $a->Level->value <=> $b->Level->value
+        return array_values(
+            array_filter(
+                self::$errors,
+                fn (ErrorItem $e) => $e->level === $level
+            )
+        );
+    }
+
+    public static function clear(): void {
+        self::$errors = [];
+    }
+
+    private static function sort(): void {
+        usort(
+            self::$errors,
+            fn (ErrorItem $a, ErrorItem $b) =>
+                $a->level->value <=> $b->level->value
         );
     }
 }
 
 class Check{
 	
-	public static function cid(string $cid): string {
+	public static function cid(string $cid): int {
         return self::validateId($cid, 'C', 'Cid');
     }
 
-    public static function uid(string $uid): string {
+    public static function uid(string $uid): int {
         return self::validateId($uid, 'U', 'Uid');
     }
 
-    public static function id(string $iid): string {
+    public static function id(string $iid): int {
         return self::validateId($iid, 'I', 'Iid');
     }
 
-    public static function tid(string $tid): string {
+    public static function tid(string $tid): int {
         return self::validateId($tid, 'T', 'Tid');
 	}
 	
@@ -155,7 +183,7 @@ class Check{
    
     public static function ville(string $ville): string{
         $ville = trim($ville);
-        if (preg_match('/^[A-Za-zÀ-ÿ\s\-\'"]{2,100}$/', $ville)) {
+        if (preg_match('/^[A-Za-zÀ-ÿ\s\-\']{2,100}$/', $ville)) {
             return $ville;
         }
         Error::add("Ville invalide", ErrorLevel::WARNING);
@@ -173,7 +201,7 @@ class Check{
     
 	public static function telephone(string $telephone): string{
         $telephone = str_replace([' ', '.', '-', '/'], '', trim($telephone));
-        if (preg_match('/^0[1-59][0-9]{8}$/', $telephone)) {
+        if (preg_match('/^0[1-5][0-9]{8}$|^09[0-9]{8}$/', $telephone)) {
             return $telephone;
         }
         Error::add("Téléphone fixe invalide", ErrorLevel::WARNING);
@@ -221,12 +249,17 @@ class Check{
 			return false;
 		}
 		$tid = $tech->getTid();
-		if (empty($tid) || $tid === 0) {
+		if ($tid <= 0) {
 			Error::add("Tid incorrect", ErrorLevel::WARNING);
 			return false;
 		}
 
 		$token = $tech->getToken();
+		$token = $tech->getToken();
+		if ($token === null || $token === "") {
+			Error::add("Token vide", ErrorLevel::WARNING);
+			return false;
+		}
 		$data = Utils::decodeJwt($token, Config::getKeyPath(2)); 
 		if ($data === null) {
 			Error::add("JWT incorrect", ErrorLevel::WARNING);
@@ -244,33 +277,47 @@ class Check{
 	}
 	
 	public static function futureDate(mixed $value): ?\DateTimeImmutable{
-		if (!$value instanceof \DateTimeImmutable) {
-			Error::add("Date invalide : doit être un DateTimeImmutable", ErrorLevel::WARNING);
+		if ($value instanceof \DateTimeImmutable) {
+			$date = $value;
+		} elseif (is_string($value)) {
+			try {
+				$date = new \DateTimeImmutable($value);
+			} catch (\Exception $e) {
+				Error::add("Date invalide : format incorrect", ErrorLevel::WARNING);
+				return null;
+			}
+		} else {
+			Error::add("Date invalide : type non supporté", ErrorLevel::WARNING);
 			return null;
 		}
+
 		$now = new \DateTimeImmutable('now');
-		if ($value <= $now) {
+		if ($date <= $now) {
 			Error::add("Date invalide : doit être dans le futur", ErrorLevel::WARNING);
 			return null;
 		}
-		return $value;
+
+		return $date;
 	}
 	
-	private static function validateId(string $value, string $prefix, string $label): string{
+	private static function validateId(string $value, string $prefix, string $label):int{
         $value = trim($value);
         if ($value === '') {
             Error::add("$label is empty", ErrorLevel::WARNING);
-            return "";
+            return 0;
         }
         if (!preg_match('/^(' . $prefix . '\d+|\d+)$/i', $value)) {
             Error::add("$label has an incorrect format", ErrorLevel::WARNING);
-            return "";
+            return 0;
         }
         if (strtolower($value[0]) === strtolower($prefix)) {
             $value = substr($value, 1);
         }
-		if(!is_numeric($value)){return "";}
-        return $value;
+		if (!ctype_digit($value)) {
+		Error::add("$label is not numeric", ErrorLevel::WARNING);
+		return 0;
+	}
+        return (int)$value;
     }
 }
 
@@ -282,14 +329,22 @@ class Utils{
 		return lcfirst($str);
 	}
 	public static function generateJwt(mixed $data, string $privateKeyPath): string {
-		$privateKey = openssl_pkey_get_private(file_get_contents($privateKeyPath));
+		$rawKey = file_get_contents($privateKeyPath);
+		$privateKey = openssl_pkey_get_private($rawKey);
+		if ($privateKey === false) {
+			Error::add("Clé privée invalide", ErrorLevel::ERROR);
+			return "";
+		}
 		$header = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode(json_encode(['typ' => 'JWT', 'alg' => 'RS256'])));
 		$payload = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode(json_encode([
 			'iat' => time(),
 			'exp' => time() + 3600,
 			'data' => $data
 		])));
-		openssl_sign($header . "." . $payload, $signature, $privateKey, OPENSSL_ALGO_SHA256);
+		if (!openssl_sign($header . "." . $payload, $signature, $privateKey, OPENSSL_ALGO_SHA256)) {
+			Error::add("Échec de la signature JWT", ErrorLevel::ERROR);
+			return "";
+		}
 		$signature64 = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
 		return $header . "." . $payload . "." . $signature64;
 	}
@@ -301,7 +356,7 @@ class Utils{
 		$publicKey = file_get_contents($publicKeyPath);
 		$parts = explode('.', $token);
 		if (count($parts) !== 3) {
-			Error::add("Format de token invalide", ErrorLevel::WARNING)
+			Error::add("Format de token invalide", ErrorLevel::WARNING);
 			return null;
 		}
 		[$header64, $payload64, $signature64] = $parts;
@@ -327,7 +382,7 @@ class Utils{
 }
 
 class User{
-    private ?string $uid = null;
+    private ?int $uid = null;
     private ?string $username = null;
     private ?string $nom = null;
     private ?string $prenom = null;
@@ -353,7 +408,7 @@ class User{
         }
     }
 	
-    public function getUid(): ?string { return $this->uid; }
+    public function getUid(): ?int { return $this->uid; }
     public function getUsername(): ?string { return $this->username; }
     public function getNom(): ?string { return $this->nom; }
     public function getPrenom(): ?string { return $this->prenom; }
@@ -366,7 +421,7 @@ class User{
     public function getPortable(): ?string { return $this->portable; }
     public function getSiren(): ?string { return $this->siren; }
 
-    public function setUid(?string $v): void { if ($v === null) {return;}$this->uid = Check::uid($v); }
+    public function setUid(int|string|null $v): void {if ($v === null) return;$this->uid = Check::uid((string)$v);}
     public function setUsername(?string $v): void {$this->username = $v !== null ? Check::username($v) : null;}
     public function setNom(?string $v): void { $this->nom = $v !== null ? Check::nom($v) : null; }
     public function setPrenom(?string $v): void {$this->prenom = $v !== null ? Check::prenom($v) : null; }
@@ -384,10 +439,9 @@ class UserController {
 
     public function __construct(private PDO $database) {}
 
-    public function getByUid(string $uid): ?User {
+    public function getByUid(string|int $uid): ?User {
         $uid = Check::uid($uid);
-        if ($uid === "") return null;
-
+		if ($uid === 0){return null;}
         try {
             $stmt = $this->database->prepare(
                 'SELECT `uid`,`username`,`nom`,`prenom`,`adresse`,`complement`,`codePostal`,`ville`,`email`,`telephone`,`portable`,`siren`
@@ -408,24 +462,30 @@ class UserController {
     }
 
     public function getByUsername(string $username): ?User {
-        return $this->getByUid($this->fetchUid(
+        $uid = $this->fetchUid(
             'SELECT `uid` FROM `User` WHERE `username` = ? LIMIT 1',
             $username
-        ));
+        );
+		if ($uid === null) return null;
+		return $this->getByUid($uid);
     }
 
     public function getByCid(string $cid): ?User {
-        return $this->getByUid($this->fetchUid(
+        $uid = $this->fetchUid(
             'SELECT `uid` FROM `Connexion` WHERE `cid` = ? LIMIT 1',
             $cid
-        ));
+        );
+		if ($uid === null) return null;
+		return $this->getByUid($uid);
     }
 
     public function getByIid(string $iid): ?User {
-        return $this->getByUid($this->fetchUid(
+        $uid = $this->fetchUid(
             'SELECT `uid` FROM `Intervention` WHERE `iid` = ? LIMIT 1',
             $iid
-        ));
+        );
+		if ($uid === null) return null;
+		return $this->getByUid($uid);
     }
 
     public function save(User $user, Tech $tech): bool {
@@ -501,7 +561,7 @@ class UserController {
         }
     }
 
-    private function fetchUid(string $sql, string $value): ?string {
+    private function fetchUid(string $sql, string $value): ?int {
         try {
             $stmt = $this->database->prepare($sql);
             $stmt->execute([$value]);
@@ -515,7 +575,7 @@ class UserController {
 }
 
 class Tech{
-	private ?string       $tid=null;
+	private ?int       $tid=null;
 	private ?User      $user=null;
 	private ?TechLevel $level = null;
 	private ?string    $token = null;
@@ -533,7 +593,7 @@ class Tech{
         }
 	}
     
-	public function getTid(): ?string {return $this->tid;}
+	public function getTid(): ?int {return $this->tid;}
     public function getUser(): ?User {return $this->user;}
     public function getLevel(): ?TechLevel {return $this->level;}
     public function getToken(): ?string {return $this->token;}
@@ -550,7 +610,7 @@ class TechController{
 	
 	public function getByTid(string $tid):?Tech{
 		$tid = Check::tid($tid);
-        if ($tid === "") return null;
+        if ($tid === 0) return null;
 
         try {
             $stmt = $this->database->prepare(
