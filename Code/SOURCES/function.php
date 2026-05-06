@@ -215,15 +215,15 @@ class Check{
 	private static function validateId(string $value, string $prefix, string $label): string{
         $value = trim($value);
         if ($value === '') {
-            Error::Add("$label is empty", ErrorLevel::WARNING);
+            Error::add("$label is empty", ErrorLevel::WARNING);
             return "";
         }
         if (!preg_match('/^(' . $prefix . '\d+|\d+)$/i', $value)) {
-            Error::Add("$label has an incorrect format", ErrorLevel::WARNING);
+            Error::add("$label has an incorrect format", ErrorLevel::WARNING);
             return "";
         }
         if (strtolower($value[0]) === strtolower($prefix)) {
-            $Value = substr($value, 1);
+            $value = substr($value, 1);
         }
         return $value;
     }
@@ -258,7 +258,7 @@ class User{
 	
     public function hydrate(array $data): void{
         foreach ($data as $key => $value) {
-            $method = "set" . . ucfirst(Utils::toCamelCase($key));
+            $method = "set" . ucfirst(Utils::toCamelCase($key));
             if (method_exists($this, $method)) {
                 $this->$method($value);
             }
@@ -293,89 +293,141 @@ class User{
 }
 
 
-class UserController{
-    
-	private PDO $database;
-	
-	public function __construct(private PDO $database) {}
-	
-	public function getByUid(string $uid): ?User{
+class UserController {
+
+    public function __construct(private PDO $database) {}
+
+    public function getByUid(string $uid): ?User {
         $uid = Check::uid($uid);
         if ($uid === "") return null;
+
         try {
-            $stmt = $this->database->prepare('SELECT `uid`,`username`,`nom`,`prenom`,`adresse`,`complement`,`codePostal`,`ville`,`email`,`telephone`,`portable`,`siren` FROM `User` WHERE `uid` = ? LIMIT 1');
+            $stmt = $this->database->prepare(
+                'SELECT `uid`,`username`,`nom`,`prenom`,`adresse`,`complement`,`codePostal`,`ville`,`email`,`telephone`,`portable`,`siren`
+                 FROM `User` WHERE `uid` = ? LIMIT 1'
+            );
             $stmt->execute([$uid]);
             $data = $stmt->fetch(PDO::FETCH_ASSOC);
+
             if (!$data) return null;
+
             $user = new User();
             $user->hydrate($data);
             return $user;
+
         } catch (Throwable $e) {
-            Error::Add("Erreur getByUid : " . $e->getMessage(), ErrorLevel::ERROR);
+            Error::add("Erreur getByUid : " . $e->getMessage(), ErrorLevel::ERROR);
             return null;
         }
     }
-   
-    public function getByUsername(string $username): ?User{
-        return $this->getByUid($this->fetchUid('SELECT `uid` FROM `User` WHERE `username` = ? LIMIT 1', $username));
+
+    public function getByUsername(string $username): ?User {
+        return $this->getByUid($this->fetchUid(
+            'SELECT `uid` FROM `User` WHERE `username` = ? LIMIT 1',
+            $username
+        ));
     }
 
-    public function getByCid(string $cid): ?User{
-        return $this->getByUid($this->fetchUid('SELECT `uid` FROM `Connexion` WHERE `cid` = ? LIMIT 1', $cid));
+    public function getByCid(string $cid): ?User {
+        return $this->getByUid($this->fetchUid(
+            'SELECT `uid` FROM `Connexion` WHERE `cid` = ? LIMIT 1',
+            $cid
+        ));
     }
 
-    public function getByIid(string $iid): ?User{
-        return $this->getByUid($this->fetchUid('SELECT `uid` FROM `Intervention` WHERE `iid` = ? LIMIT 1', $iid));
+    public function getByIid(string $iid): ?User {
+        return $this->getByUid($this->fetchUid(
+            'SELECT `uid` FROM `Intervention` WHERE `iid` = ? LIMIT 1',
+            $iid
+        ));
     }
-   
-   
-    public function save(User $user, Tech $tech): bool{
+
+    public function save(User $user, Tech $tech): bool {
         try {
+            // INSERT
             if ($user->getUid() === null) {
-				if($tech==null || !Check::tech($tech)){Error:add("Ajout d'un user refusé, Tech invalide",ErrorLevel::WARNING);return false;}
-                $stmt = $this->Database->prepare('INSERT INTO `User` (`username`,`nom`,`prenom`,`adresse`,`complement`,`codePostal`,`ville`,`email`,`telephone`,`portable`,`siren`) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
-                $ok = $stmt->execute([$user->getUsername(),$user->getNom(),$user->getPrenom(),$user->getAdresse(),$user->getComplement(),$user->getCodePostal(),$user->getVille(),$user->getEmail(),$user->getTelephone(),$user->getPortable(),$user->getSiren()]);
+
+                if ($tech === null || !Check::tech($tech)) {
+                    Error::add("Ajout d'un user refusé, Tech invalide", ErrorLevel::WARNING);
+                    return false;
+                }
+
+                $stmt = $this->database->prepare(
+                    'INSERT INTO `User` (`username`,`nom`,`prenom`,`adresse`,`complement`,`codePostal`,`ville`,`email`,`telephone`,`portable`,`siren`)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?)'
+                );
+
+                $ok = $stmt->execute([
+                    $user->getUsername(), $user->getNom(), $user->getPrenom(),
+                    $user->getAdresse(), $user->getComplement(), $user->getCodePostal(),
+                    $user->getVille(), $user->getEmail(), $user->getTelephone(),
+                    $user->getPortable(), $user->getSiren()
+                ]);
+
                 if ($ok) {
                     $user->setUid($this->database->lastInsertId());
                 }
+
                 return $ok;
-			/*TODO Now*/
-            $stmt = $this->database->prepare( 'UPDATE `User` SET `Username`=?,`Nom`=?,`Prenom`=?,`Adresse`=?,`Complement`=?,`CodePostal`=?,`Ville`=?,`Email`=?,`Telephone`=?,`Portable`=?,`Siren`=? WHERE `Uid`=?');
-            return $stmt->execute([$user->getUsername(),$user->getNom(),$user->getPrenom(),$user->getAdresse(),$user->getComplement(),$user->getCodePostal(),$user->getVille(),$user->getEmail(),$user->getTelephone(),$user->getPortable(),$user->getSiren(),$user->getUid()]);
-			}
+            }
+
+            // UPDATE
+            if (($tech === null || !Check::tech($tech)) &&
+                (!isset($_SESSION['Username']) || $user->getUsername() !== $_SESSION['Username'])) {
+
+                Error::add("Modification d'un user refusée, Tech invalide ou User non autorisé", ErrorLevel::WARNING);
+                return false;
+            }
+
+            $stmt = $this->database->prepare(
+                'UPDATE `User` SET `username`=?,`nom`=?,`prenom`=?,`adresse`=?,`complement`=?,`codePostal`=?,`ville`=?,`email`=?,`telephone`=?,`portable`=?,`siren`=? WHERE `uid`=?'
+            );
+
+            return $stmt->execute([
+                $user->getUsername(), $user->getNom(), $user->getPrenom(),
+                $user->getAdresse(), $user->getComplement(), $user->getCodePostal(),
+                $user->getVille(), $user->getEmail(), $user->getTelephone(),
+                $user->getPortable(), $user->getSiren(), $user->getUid()
+            ]);
+
         } catch (Throwable $e) {
-            Error::Add("Erreur save User : " . $e->getMessage(), ErrorLevel::ERROR);
+            Error::add("Erreur save User : " . $e->getMessage(), ErrorLevel::ERROR);
             return false;
         }
     }
-	
-    public function delete(User $user): bool{
+
+    public function delete(User $user, Tech $tech): bool {
         if ($user->getUid() === null) {
-            Error::Add("Impossible de supprimer un User sans Uid", ErrorLevel::WARNING);
+            Error::add("Impossible de supprimer un User sans Uid", ErrorLevel::WARNING);
             return false;
         }
+
+        if ($tech === null || !Check::tech($tech)) {
+            Error::add("Suppression d'un user refusée, Tech invalide", ErrorLevel::WARNING);
+            return false;
+        }
+
         try {
-            $stmt = $this->Database->prepare('DELETE FROM `User` WHERE `uid` = ? LIMIT 1');
+            $stmt = $this->database->prepare('DELETE FROM `User` WHERE `uid` = ?');
             return $stmt->execute([$user->getUid()]);
         } catch (Throwable $e) {
-            Error::Add("Erreur delete User : " . $e->getMessage(), ErrorLevel::ERROR);
+            Error::add("Erreur delete User : " . $e->getMessage(), ErrorLevel::ERROR);
             return false;
         }
     }
-	
-    
 
-    private function fetchUid(string $sql, string $value): ?string{
+    private function fetchUid(string $sql, string $value): ?string {
         try {
-            $stmt = $this->Database->prepare($sql);
+            $stmt = $this->database->prepare($sql);
             $stmt->execute([$value]);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            return $result ? $result['Uid'] : null;
+            return $result ? $result['uid'] : null;
         } catch (Throwable $e) {
-            Error::Add("Erreur fetchUid : " . $e->getMessage(), ErrorLevel::ERROR);
+            Error::add("Erreur fetchUid : " . $e->getMessage(), ErrorLevel::ERROR);
             return null;
         }
     }
 }
+
 
 ?>
