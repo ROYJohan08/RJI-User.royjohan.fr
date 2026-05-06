@@ -6,32 +6,34 @@ enum ErrorLevel: int {
     case WARNING = 2;
     case ERROR = 3;
 }
+
 class ErrorItem{
-    public function __construct(public readonly string $Content,public readonly ErrorLevel $Level,public readonly \DateTimeImmutable $Date) {}
+    public function __construct(public readonly string $content,public readonly ErrorLevel $level,public readonly \DateTimeImmutable $date) {}
 }
+
 class Error{
     private static array $errors = [];
 
-    public static function Add(string $Content, ErrorLevel $Level): bool{
-        $Content = trim(strip_tags($Content));
-        if (strlen($Content) < 5) {
+    public static function add(string $content, ErrorLevel $level): bool{
+        $content = trim(strip_tags($content));
+        if (strlen($content) < 5) {
             return false;
         }
         if (class_exists('Transliterator')) {
             $trans = \Transliterator::create('Any-Latin; Latin-ASCII');
-            $Content = $trans->transliterate($Content);
+            $content = $trans->transliterate($content);
         }
-        $Content = htmlspecialchars($Content, ENT_QUOTES, 'UTF-8');
-        self::$errors[] = new ErrorItem(Content: $Content,Level: $Level,Date: new \DateTimeImmutable());
+        $content = htmlspecialchars($Content, ENT_QUOTES, 'UTF-8');
+        self::$errors[] = new ErrorItem(Content: $content,Level: $level,Date: new \DateTimeImmutable());
         self::sort();
         return true;
     }
    
-   public static function get(?ErrorLevel $Level = null): array{
-        if ($Level === null || $Level=== ErrorLevel::ALL) {
+   public static function get(?ErrorLevel $level = null): array{
+        if ($level === null || $level=== ErrorLevel::ALL) {
             return self::$errors;
         }
-        return array_values(array_filter(self::$errors,fn(ErrorItem $e) => $e->Level === $Level));
+        return array_values(array_filter(self::$errors,fn(ErrorItem $e) => $e->level === $level));
     }
    
    public static function clear(): void{
@@ -44,152 +46,152 @@ class Error{
         );
     }
 }
+
 class Check{
-    
 	
-	public static function Cid(string $Cid): string {
-        return self::validateId($Cid, 'C', 'Cid');
+	public static function cid(string $cid): string {
+        return self::validateId($cid, 'C', 'Cid');
     }
 
-    public static function Uid(string $Uid): string {
-        return self::validateId($Uid, 'U', 'Uid');
+    public static function uid(string $uid): string {
+        return self::validateId($uid, 'U', 'Uid');
     }
 
-    public static function Iid(string $Iid): string {
-        return self::validateId($Iid, 'I', 'Iid');
+    public static function id(string $iid): string {
+        return self::validateId($iid, 'I', 'Iid');
     }
 
-    public static function Tid(string $Tid): string {
-        return self::validateId($Tid, 'T', 'Tid');
+    public static function tid(string $tid): string {
+        return self::validateId($tid, 'T', 'Tid');
 	}
 	
-	public static function Token(string $Token): string{
-        $Token = trim($Token);
-        if ($Token === '') {
-            Error::Add("Token is empty", ErrorLevel::WARNING);
+	public static function token(string $token): string{
+        $token = trim($token);
+        if ($token === '') {
+            Error::add("Token is empty", ErrorLevel::WARNING);
             return "";
         }
-        if (!preg_match('/^[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]*$/', $Token)) {
-            Error::Add("Token has an incorrect format", ErrorLevel::WARNING);
+        if (!preg_match('/^[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]*$/', $token)) {
+            Error::add("Token has an incorrect format", ErrorLevel::WARNING);
             return "";
         }
-        return $Token;
+        return $token;
     }
 	
-	public static function Username(string $Username): string{
-        $Username = trim($Username);
-        $isEmail = filter_var($Username, FILTER_VALIDATE_EMAIL);
-        $isAlpha = preg_match('/^[A-Za-zÀ-ÿ\-\'\s]{2,}$/', $Username);
+	public static function username(string $username): string{
+        $username = trim($username);
+        $isEmail = filter_var($username, FILTER_VALIDATE_EMAIL);
+        $isAlpha = preg_match('/^[A-Za-zÀ-ÿ\-\'\s]{2,}$/', $username);
         if ($isEmail || $isAlpha) {
-            return $Username;
+            return $username;
         }
-        Error::Add("Username incorrect (Email ou Nom attendu)", ErrorLevel::WARNING);
+        Error::add("Username incorrect (Email ou Nom attendu)", ErrorLevel::WARNING);
         return "";
     }
 
-    public static function Password(string $Password): string{
-        if (preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/', $Password)) {
-            return $Password;
+    public static function password(string $password): string{
+        if (preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/', $password)) {
+            return $password;
         }
-        Error::Add("Password trop faible (8 car. min, 1 Maj, 1 Min, 1 Chiffre)", ErrorLevel::WARNING);
+        Error::add("Password trop faible (8 car. min, 1 Maj, 1 Min, 1 Chiffre)", ErrorLevel::WARNING);
         return "";
     }
 
-    public static function Code(string $Code): string{
-        $Code = trim($Code);
-        if (preg_match('/^[A-Za-z0-9]{8}$/', $Code)) {
-            return $Code;
+    public static function code(string $code): string{
+        $code = trim($code);
+        if (preg_match('/^[A-Za-z0-9]{8}$/', $code)) {
+            return $code;
         }
-        Error::Add("Code incorrect (8 caractères alphanumériques)", ErrorLevel::WARNING);
+        Error::add("Code incorrect (8 caractères alphanumériques)", ErrorLevel::WARNING);
         return "";
     }
 
-	public static function Nom(string $Nom): string{
-        $Nom = trim($Nom);
-        if (preg_match('/^[A-Za-zÀ-ÿ\s\-\']{2,50}$/', $Nom)) {
-            return $Nom;
+	public static function nom(string $nom): string{
+        $nom = trim($nom);
+        if (preg_match('/^[A-Za-zÀ-ÿ\s\-\']{2,50}$/', $nom)) {
+            return $nom;
         }
-        Error::Add("Nom invalide", ErrorLevel::WARNING);
+        Error::add("Nom invalide", ErrorLevel::WARNING);
         return "";
     }
 
-    public static function Prenom(string $Prenom): string{
-        $Prenom = trim($Prenom);
-        if (preg_match('/^[A-Za-zÀ-ÿ\s\-\']{2,50}$/', $Prenom)) {
-            return $Prenom;
+    public static function prenom(string $prenom): string{
+        $prenom = trim($prenom);
+        if (preg_match('/^[A-Za-zÀ-ÿ\s\-\']{2,50}$/', $prenom)) {
+            return $prenom;
         }
-        Error::Add("Prénom invalide", ErrorLevel::WARNING);
+        Error::add("Prénom invalide", ErrorLevel::WARNING);
         return "";
     }
 
-    public static function Adresse(string $Adresse): string{
-        $Adresse = trim($Adresse);
-        if (strlen($Adresse) > 5) {
-            return $Adresse;
+    public static function adresse(string $adresse): string{
+        $adresse = trim($adresse);
+        if (strlen($adresse) > 5) {
+            return $adresse;
         }
-        Error::Add("Adresse trop courte", ErrorLevel::WARNING);
+        Error::add("Adresse trop courte", ErrorLevel::WARNING);
         return "";
     }
 
-    public static function Complement(string $Complement): string{
-        return trim($Complement);
+    public static function complement(string $complement): string{
+        return trim($complement);
     }
 
-    public static function CodePostal(string $CodePostal): string{
-        $CodePostal = trim($CodePostal);
-        if (preg_match('/^[0-9]{5}$/', $CodePostal)) {
-            return $CodePostal;
+    public static function codePostal(string $codePostal): string{
+        $codePostal = trim($codePostal);
+        if (preg_match('/^[0-9]{5}$/', $codePostal)) {
+            return $codePostal;
         }
-        Error::Add("Code postal invalide (5 chiffres)", ErrorLevel::WARNING);
+        Error::add("Code postal invalide (5 chiffres)", ErrorLevel::WARNING);
         return "";
     }
    
-   public static function Ville(string $Ville): string{
-        $Ville = trim($Ville);
-        if (preg_match('/^[A-Za-zÀ-ÿ\s\-\'"]{2,100}$/', $Ville)) {
-            return $Ville;
+    public static function ville(string $ville): string{
+        $ville = trim($ville);
+        if (preg_match('/^[A-Za-zÀ-ÿ\s\-\'"]{2,100}$/', $ville)) {
+            return $ville;
         }
-        Error::Add("Ville invalide", ErrorLevel::WARNING);
+        Error::add("Ville invalide", ErrorLevel::WARNING);
         return "";
     }
 
-    public static function Email(string $Email): string{
-        $Email = trim($Email);
-        if (filter_var($Email, FILTER_VALIDATE_EMAIL)) {
-            return $Email;
+    public static function email(string $email): string{
+        $email = trim($email);
+        if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $email;
         }
-        Error::Add("Format Email invalide", ErrorLevel::WARNING);
+        Error::add("Format Email invalide", ErrorLevel::WARNING);
         return "";
     }
     
-	public static function Telephone(string $Telephone): string{
-        $Telephone = str_replace([' ', '.', '-', '/'], '', trim($Telephone));
-        if (preg_match('/^0[1-59][0-9]{8}$/', $Telephone)) {
-            return $Telephone;
+	public static function telephone(string $telephone): string{
+        $telephone = str_replace([' ', '.', '-', '/'], '', trim($telephone));
+        if (preg_match('/^0[1-59][0-9]{8}$/', $telephone)) {
+            return $telephone;
         }
-        Error::Add("Téléphone fixe invalide", ErrorLevel::WARNING);
+        Error::add("Téléphone fixe invalide", ErrorLevel::WARNING);
         return "";
     }
 
-    public static function Portable(string $Portable): string{
-        $Portable = str_replace([' ', '.', '-', '/'], '', trim($Portable));
-        if (preg_match('/^0[67][0-9]{8}$/', $Portable)) {
-            return $Portable;
+    public static function portable(string $portable): string{
+        $portable = str_replace([' ', '.', '-', '/'], '', trim($portable));
+        if (preg_match('/^0[67][0-9]{8}$/', $portable)) {
+            return $portable;
         }
-        Error::Add("Téléphone portable invalide", ErrorLevel::WARNING);
+        Error::add("Téléphone portable invalide", ErrorLevel::WARNING);
         return "";
     }
 
-    public static function Siren(string $Siren): string{
-        $Siren = str_replace(' ', '', trim($Siren));
+    public static function siren(string $siren): string{
+        $siren = str_replace(' ', '', trim($siren));
 
-        if (!preg_match('/^[0-9]{9}$/', $Siren)) {
-            Error::Add("SIREN invalide (doit contenir 9 chiffres)", ErrorLevel::WARNING);
+        if (!preg_match('/^[0-9]{9}$/', $siren)) {
+            Error::add("SIREN invalide (doit contenir 9 chiffres)", ErrorLevel::WARNING);
             return "";
         }
         $sum = 0;
         for ($i = 0; $i < 9; $i++) {
-            $digit = (int)$Siren[$i];
+            $digit = (int)$siren[$i];
             if ($i % 2 !== 0) {
                 $digit *= 2;
                 if ($digit > 9) {
@@ -199,93 +201,110 @@ class Check{
             $sum += $digit;
         }
         if ($sum % 10 === 0) {
-            return $Siren;
+            return $siren;
         }
 
-        Error::Add("SIREN incorrect (échec de la clé de contrôle)", ErrorLevel::WARNING);
+        Error::add("SIREN incorrect (échec de la clé de contrôle)", ErrorLevel::WARNING);
         return "";
     }
 	
-	private static function validateId(string $Value, string $Prefix, string $Label): string{
-        $Value = trim($Value);
-        if ($Value === '') {
-            Error::Add("$Label is empty", ErrorLevel::WARNING);
+	public static function tech(Tech $tech):boolean{
+		return true;/*TODO*/
+	}
+	
+	private static function validateId(string $value, string $prefix, string $label): string{
+        $value = trim($value);
+        if ($value === '') {
+            Error::Add("$label is empty", ErrorLevel::WARNING);
             return "";
         }
-        if (!preg_match('/^(' . $Prefix . '\d+|\d+)$/i', $Value)) {
-            Error::Add("$Label has an incorrect format", ErrorLevel::WARNING);
+        if (!preg_match('/^(' . $prefix . '\d+|\d+)$/i', $value)) {
+            Error::Add("$label has an incorrect format", ErrorLevel::WARNING);
             return "";
         }
-        if (strtolower($Value[0]) === strtolower($Prefix)) {
-            $Value = substr($Value, 1);
+        if (strtolower($value[0]) === strtolower($prefix)) {
+            $Value = substr($value, 1);
         }
-        return $Value;
+        return $value;
     }
 }
 
+class Utils{
+	public static function toCamelCase(string $str): string {
+		$str = str_replace(['-', '_'], ' ', strtolower($str));
+		$str = ucwords($str);
+		$str = str_replace(' ', '', $str);
+		return lcfirst($str);
+	}
+}
+
 class User{
-    private ?string $Uid = null;
-    private ?string $Username = null;
-    private ?string $Nom = null;
-    private ?string $Prenom = null;
-    private ?string $Adresse = null;
-    private ?string $Complement = null;
-    private ?string $CodePostal = null;
-    private ?string $Ville = null;
-    private ?string $Email = null;
-    private ?string $Telephone = null;
-    private ?string $Portable = null;
-    private ?string $Siren = null;
+    private ?string $uid = null;
+    private ?string $username = null;
+    private ?string $nom = null;
+    private ?string $prenom = null;
+    private ?string $adresse = null;
+    private ?string $complement = null;
+    private ?string $codePostal = null;
+    private ?string $ville = null;
+    private ?string $email = null;
+    private ?string $telephone = null;
+    private ?string $portable = null;
+    private ?string $siren = null;
+	
+	public function __construct(array $data) {
+		$this->hydrate($data);
+	}
 	
     public function hydrate(array $data): void{
         foreach ($data as $key => $value) {
-            $method = "set" . ucfirst($key);
+            $method = "set" . . ucfirst(Utils::toCamelCase($key));
             if (method_exists($this, $method)) {
                 $this->$method($value);
             }
         }
     }
 	
-    public function getUid(): ?string { return $this->Uid; }
-    public function getUsername(): ?string { return $this->Username; }
-    public function getNom(): ?string { return $this->Nom; }
-    public function getPrenom(): ?string { return $this->Prenom; }
-    public function getAdresse(): ?string { return $this->Adresse; }
-    public function getComplement(): ?string { return $this->Complement; }
-    public function getCodePostal(): ?string { return $this->CodePostal; }
-    public function getVille(): ?string { return $this->Ville; }
-    public function getEmail(): ?string { return $this->Email; }
-    public function getTelephone(): ?string { return $this->Telephone; }
-    public function getPortable(): ?string { return $this->Portable; }
-    public function getSiren(): ?string { return $this->Siren; }
+    public function getUid(): ?string { return $this->uid; }
+    public function getUsername(): ?string { return $this->username; }
+    public function getNom(): ?string { return $this->nom; }
+    public function getPrenom(): ?string { return $this->prenom; }
+    public function getAdresse(): ?string { return $this->adresse; }
+    public function getComplement(): ?string { return $this->complement; }
+    public function getCodePostal(): ?string { return $this->codePostal; }
+    public function getVille(): ?string { return $this->ville; }
+    public function getEmail(): ?string { return $this->email; }
+    public function getTelephone(): ?string { return $this->telephone; }
+    public function getPortable(): ?string { return $this->portable; }
+    public function getSiren(): ?string { return $this->siren; }
 
-    public function setUid(string $v): void { $this->Uid = Check::Uid($v); }
-    public function setUsername(string $v): void { $this->Username = Check::Username($v); }
-    public function setNom(string $v): void { $this->Nom = Check::Nom($v); }
-    public function setPrenom(string $v): void { $this->Prenom = Check::Prenom($v); }
-    public function setAdresse(string $v): void { $this->Adresse = Check::Adresse($v); }
-    public function setComplement(string $v): void { $this->Complement = Check::Complement($v); }
-    public function setCodePostal(string $v): void { $this->CodePostal = Check::CodePostal($v); }
-    public function setVille(string $v): void { $this->Ville = Check::Ville($v); }
-    public function setEmail(string $v): void { $this->Email = Check::Email($v); }
-    public function setTelephone(string $v): void { $this->Telephone = Check::Telephone($v); }
-    public function setPortable(string $v): void { $this->Portable = Check::Portable($v); }
-    public function setSiren(string $v): void { $this->Siren = Check::Siren($v); }
+    public function setUid(?string $v): void { $this->uid = $v !== null ? Check::uid($v) : null; }
+    public function setUsername(?string $v): void {$this->username = $v !== null ? Check::username($v) : null;}
+    public function setNom(?string $v): void { $this->nom = $v !== null ? Check::nom($v) : null; }
+    public function setPrenom(?string $v): void {$this->prenom = $v !== null ? Check::prenom($v) : null; }
+    public function setAdresse(?string $v): void { $this->adresse = $v !== null ? Check::adresse($v) : null; }
+    public function setComplement(?string $v): void { $this->complement = $v !== null ? Check::complement($v) : null;}
+    public function setCodePostal(?string $v): void {$this->codePostal = $v !== null ? Check::codePostal($v) : null;}
+    public function setVille(?string $v): void {$this->ville = $v !== null ? Check::ville($v) : null; }
+    public function setEmail(?string $v): void { $this->email = $v !== null ? Check::email($v) : null; }
+    public function setTelephone(?string $v): void { $this->telephone = $v !== null ? Check::telephone($v) : null; }
+    public function setPortable(?string $v): void { $this->portable = $v !== null ? Check::portable($v) : null; }
+    public function setSiren(?string $v): void { $this->siren = $v !== null ? Check::siren($v) : null; }
 }
 
 
-class UserRepository{
+class UserController{
     
-	private PDO $Database;
+	private PDO $database;
 	
-	public function __construct(private PDO $Database) {}
+	public function __construct(private PDO $database) {}
 	
-	public function getByUid(string $Uid): ?User{
-        $Uid = Check::Uid($Uid);
-        if ($Uid === "") return null;
+	public function getByUid(string $uid): ?User{
+        $uid = Check::uid($uid);
+        if ($uid === "") return null;
         try {
-            $stmt = $this->Database->prepare('SELECT `Uid`,`Username`,`Nom`,`Prenom`,`Adresse`,`Complement`,`CodePostal`,`Ville`,`Email`,`Telephone`,`Portable`,`Siren` FROM `User` WHERE `Uid` = ? LIMIT 1');
-            $stmt->execute([$Uid]);
+            $stmt = $this->database->prepare('SELECT `uid`,`username`,`nom`,`prenom`,`adresse`,`complement`,`codePostal`,`ville`,`email`,`telephone`,`portable`,`siren` FROM `User` WHERE `uid` = ? LIMIT 1');
+            $stmt->execute([$uid]);
             $data = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$data) return null;
             $user = new User();
@@ -297,18 +316,33 @@ class UserRepository{
         }
     }
    
-    public function save(User $user): bool{
+    public function getByUsername(string $username): ?User{
+        return $this->getByUid($this->fetchUid('SELECT `uid` FROM `User` WHERE `username` = ? LIMIT 1', $username));
+    }
+
+    public function getByCid(string $cid): ?User{
+        return $this->getByUid($this->fetchUid('SELECT `uid` FROM `Connexion` WHERE `cid` = ? LIMIT 1', $cid));
+    }
+
+    public function getByIid(string $iid): ?User{
+        return $this->getByUid($this->fetchUid('SELECT `uid` FROM `Intervention` WHERE `iid` = ? LIMIT 1', $iid));
+    }
+   
+   
+    public function save(User $user, Tech $tech): bool{
         try {
             if ($user->getUid() === null) {
-                $stmt = $this->Database->prepare('INSERT INTO `User` (`Username`,`Nom`,`Prenom`,`Adresse`,`Complement`,`CodePostal`,`Ville`,`Email`,`Telephone`,`Portable`,`Siren`) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+				if($tech==null || !Check::tech($tech)){Error:add("Ajout d'un user refusé, Tech invalide",ErrorLevel::WARNING);return false;}
+                $stmt = $this->Database->prepare('INSERT INTO `User` (`username`,`nom`,`prenom`,`adresse`,`complement`,`codePostal`,`ville`,`email`,`telephone`,`portable`,`siren`) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
                 $ok = $stmt->execute([$user->getUsername(),$user->getNom(),$user->getPrenom(),$user->getAdresse(),$user->getComplement(),$user->getCodePostal(),$user->getVille(),$user->getEmail(),$user->getTelephone(),$user->getPortable(),$user->getSiren()]);
                 if ($ok) {
-                    $user->setUid($this->Database->lastInsertId());
+                    $user->setUid($this->database->lastInsertId());
                 }
                 return $ok;
-            }
-            $stmt = $this->Database->prepare( 'UPDATE `User` SET `Username`=?,`Nom`=?,`Prenom`=?,`Adresse`=?,`Complement`=?,`CodePostal`=?,`Ville`=?,`Email`=?,`Telephone`=?,`Portable`=?,`Siren`=? WHERE `Uid`=?');
+			/*TODO Now*/
+            $stmt = $this->database->prepare( 'UPDATE `User` SET `Username`=?,`Nom`=?,`Prenom`=?,`Adresse`=?,`Complement`=?,`CodePostal`=?,`Ville`=?,`Email`=?,`Telephone`=?,`Portable`=?,`Siren`=? WHERE `Uid`=?');
             return $stmt->execute([$user->getUsername(),$user->getNom(),$user->getPrenom(),$user->getAdresse(),$user->getComplement(),$user->getCodePostal(),$user->getVille(),$user->getEmail(),$user->getTelephone(),$user->getPortable(),$user->getSiren(),$user->getUid()]);
+			}
         } catch (Throwable $e) {
             Error::Add("Erreur save User : " . $e->getMessage(), ErrorLevel::ERROR);
             return false;
@@ -321,7 +355,7 @@ class UserRepository{
             return false;
         }
         try {
-            $stmt = $this->Database->prepare('DELETE FROM `User` WHERE `Uid` = ? LIMIT 1');
+            $stmt = $this->Database->prepare('DELETE FROM `User` WHERE `uid` = ? LIMIT 1');
             return $stmt->execute([$user->getUid()]);
         } catch (Throwable $e) {
             Error::Add("Erreur delete User : " . $e->getMessage(), ErrorLevel::ERROR);
@@ -329,17 +363,7 @@ class UserRepository{
         }
     }
 	
-    public function usernameToUid(string $Username): ?string{
-        return $this->fetchUid('SELECT `Uid` FROM `User` WHERE `Username` = ? LIMIT 1', $Username);
-    }
-
-    public function cidToUid(string $Cid): ?string{
-        return $this->fetchUid('SELECT `Uid` FROM `Connexion` WHERE `Cid` = ? LIMIT 1', $Cid);
-    }
-
-    public function iidToUid(string $Iid): ?string{
-        return $this->fetchUid('SELECT `Uid` FROM `Intervention` WHERE `Iid` = ? LIMIT 1', $Iid);
-    }
+    
 
     private function fetchUid(string $sql, string $value): ?string{
         try {
