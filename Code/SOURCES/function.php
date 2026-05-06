@@ -208,10 +208,34 @@ class Check{
         return "";
     }
 	
-	public static function tech(Tech $tech):boolean{
-		return true;/*TODO*/
+	public static function tech(?Tech $tech): bool {
+		if ($tech === null) {
+			Error::add("Tech vide", ErrorLevel::WARNING);[cite: 1]
+			return false;
+		}
+		$tid = $tech->getTid();
+		if (empty($tid) || $tid === 0) {
+			Error::add("Tid incorrect", ErrorLevel::WARNING);[cite: 1]
+			return false;
+		}
+
+		$token = $tech->getToken();
+		$data = Utils::decodeJwt($token, "./public.key"); 
+		if ($data === null) {
+			Error::add("JWT incorrect", ErrorLevel::WARNING);[cite: 1]
+			return false;
+		}
+		if (!isset($data["data"]["tid"])) {
+			Error::add("JWT incomplet", ErrorLevel::WARNING);[cite: 1]
+			return false;
+		}
+		if ($data["data"]["tid"] !== $tid) {
+			Error::add("JWT ne correspond pas", ErrorLevel::WARNING);[cite: 1]
+			return false;
+		}
+		return true;
 	}
-	
+		
 	private static function validateId(string $value, string $prefix, string $label): string{
         $value = trim($value);
         if ($value === '') {
@@ -235,6 +259,49 @@ class Utils{
 		$str = ucwords($str);
 		$str = str_replace(' ', '', $str);
 		return lcfirst($str);
+	}
+	public static function generateJwt(mixed $data, string $privateKeyPath): string {
+		$privateKey = openssl_pkey_get_private(file_get_contents($privateKeyPath));
+		$header = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode(json_encode(['typ' => 'JWT', 'alg' => 'RS256'])));
+		$payload = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode(json_encode([
+			'iat' => time(),
+			'exp' => time() + 3600,
+			'data' => $data
+		])));
+		openssl_sign($header . "." . $payload, $signature, $privateKey, OPENSSL_ALGO_SHA256);
+		$signature64 = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
+		return $header . "." . $payload . "." . $signature64;
+	}
+	public static function  decodeJwt(string $token, string $publicKeyPath): ?array {
+		if (!file_exists($publicKeyPath)) {
+			Error::add("Clé publique introuvable", ErrorLevel::ERROR);[cite: 1]
+			return null;
+		}
+		$publicKey = file_get_contents($publicKeyPath);
+		$parts = explode('.', $token);
+		if (count($parts) !== 3) {
+			Error::add("Format de token invalide", ErrorLevel::WARNING);[cite: 1]
+			return null;
+		}
+		[$header64, $payload64, $signature64] = $parts;
+		$signature = base64_decode(str_replace(['-', '_'], ['+', '/'], $signature64));
+		$dataToVerify = $header64 . '.' . $payload64;
+		$isValid = openssl_verify(
+			$dataToVerify, 
+			$signature, 
+			$publicKey, 
+			OPENSSL_ALGO_SHA256
+		);
+		if ($isValid === 1) {
+			$payload = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $payload64)), true);
+			if (isset($payload['exp']) && $payload['exp'] < time()) {
+				Error::add("Le token a expiré", ErrorLevel::WARNING);[cite: 1]
+				return null;
+			}        
+			return $payload;
+		} 
+		Error::add("Signature JWT invalide", ErrorLevel::WARNING);[cite: 1]
+		return null;
 	}
 }
 
@@ -344,7 +411,6 @@ class UserController {
 
     public function save(User $user, Tech $tech): bool {
         try {
-            // INSERT
             if ($user->getUid() === null) {
 
                 if ($tech === null || !Check::tech($tech)) {
