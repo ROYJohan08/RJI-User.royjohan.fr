@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+session_start();
 require_once("config.php");
 
 enum ErrorLevel: int {
@@ -48,7 +49,6 @@ class Errors {
             level: $level,
             date: new \DateTimeImmutable()
         );
-
         self::sort();
         return true;
     }
@@ -58,7 +58,6 @@ class Errors {
         if ($level === null || $level === ErrorLevel::ALL) {
             return self::$errors;
         }
-
         return array_values(
             array_filter(
                 self::$errors,
@@ -1152,6 +1151,54 @@ class ConnexionController{
         ]);
 		
 	}
+
+	public function setLock(string $username, int $trynumber): void{
+		$username = Check::username($username);
+		if ($username === "") {
+			Errors::add("Username incorrect", ErrorLevel::WARNING);
+			return;
+		}
+
+		if ($trynumber < 3) {
+			Errors::add("Erreur de fonction", ErrorLevel::WARNING);
+			return;
+		}
+
+		$uid = $this->fetchUid(
+			'SELECT `uid` FROM `User` WHERE `username` = ? LIMIT 1',
+			$username
+		);
+
+		if ($uid === null) {
+			Errors::add("Impossible de récupérer l'uid", ErrorLevel::WARNING);
+			return;
+		}
+
+		$stmt = $this->database->prepare(
+			'SELECT `cid`, `timeLock` FROM `Connexion` WHERE `uid` = ? LIMIT 1'
+		);
+		$stmt->execute([$uid]);
+		$row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+		if (!$row) {
+			Errors::add("Aucune connexion trouvée", ErrorLevel::WARNING);
+			return;
+		}
+
+		// Calcul du temps de lock (ta logique conservée)
+		$Time = 0;
+		for ($i = 4; $i <= $trynumber; $i++) {
+			$Time += ($i - 3) * 2;
+		}
+
+		$timeLock = new DateTimeImmutable('+' . $Time . ' hours');
+
+		$stmt = $this->database->prepare(
+			'UPDATE `Connexion` SET `timeLock` = ? WHERE `uid` = ? LIMIT 1'
+		);
+		$stmt->execute([$timeLock->format('Y-m-d H:i:s'), $uid]);
+	}
+
 
     private function fetchUid(string $sql, string $value): ?int {
         try {
