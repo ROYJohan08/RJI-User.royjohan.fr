@@ -99,18 +99,19 @@ class Check{
         return self::validateId($tid, 'T', 'Tid');
 	}
 	
-	public static function token(string $token): string{
-        $token = trim($token);
-        if ($token === '') {
-            Error::add("Token is empty", ErrorLevel::WARNING);
-            return "";
-        }
-        if (!preg_match('/^[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_]*$/', $token)) {
-            Error::add("Token has an incorrect format", ErrorLevel::WARNING);
-            return "";
-        }
-        return $token;
-    }
+	public static function token(string $token): string {
+		$token = trim($token);
+		if ($token === '') {
+			Error::add("Token is empty", ErrorLevel::WARNING);
+			return "";
+		}
+		if (!preg_match('/^[A-Za-z0-9\-_]+=*\.[A-Za-z0-9\-_]+=*\.[A-Za-z0-9\-_]+=*$/', $token)) {
+			Error::add("Token has an incorrect format", ErrorLevel::WARNING);
+			return "";
+		}
+
+		return $token;
+	}
 	
 	public static function username(string $username): string{
         $username = trim($username);
@@ -795,6 +796,37 @@ class ConnexionController{
         ]);
     }
 
+	public function byToken(int $cid, string $token) {
+		$cid = Check::cid($cid);
+		if ($cid === 0) {Error::add("Cid incorrect", ErrorLevel::WARNING);return null;}
+		$token = Check::token($token);
+		if ($token === "") {Error::add("Token incorrect", ErrorLevel::WARNING);return null;}
+		$tokenData = Utils::decodeJwt($token, Config::getKeyPath(1));
+		if ($tokenData === null) {Error::add("Token invalide ou expiré", ErrorLevel::WARNING);return null;}
+		$stmt = $this->database->prepare('SELECT `cid`,`uid`,`token`, `tokenValidity`  FROM `Connexion` WHERE `cid` = ? LIMIT 1');
+		$stmt->execute([$cid]);
+		$row = $stmt->fetch(PDO::FETCH_ASSOC);
+		if (!$row) {Error::add("Aucune connexion trouvée", ErrorLevel::WARNING);return null;}
+		if ($tokenData['uid'] != $row['uid']) {Error::add("Tentative de manipulation de la base de donnée", ErrorLevel::WARNING);return null;}
+		if ($token !== $row['token']) {Error::add("Token mismatch", ErrorLevel::WARNING);return null;}
+		try {
+			$validity = new DateTimeImmutable($row['tokenValidity']);
+		} catch (Throwable $e) {
+			Error::add("tokenValidity au mauvais format", ErrorLevel::WARNING);
+			return null;
+		}
+		if ($validity < new DateTimeImmutable()) {Error::add("Token expiré", ErrorLevel::WARNING);return null;}
+		$newToken = Utils::generateJwt(['cid' => $cid, 'uid' => $tokenData['uid']],Config::getKeyPath(60, "0100101001"));
+		$tokenValidity = new DateTimeImmutable('+24 hours');
+		$this->updateToken($cid, $newToken, $tokenValidity);
+		return new Connexion([
+			'cid'            => $cid,
+			'uid'            => $tokenData['uid'],
+			'token'          => $newToken,
+			'tokenValidity'  => $tokenValidity
+		]);
+	}
+
     private function fetchUid(string $sql, string $value): ?int {
         try {
             $stmt = $this->database->prepare($sql);
@@ -822,6 +854,7 @@ class ConnexionController{
 			return false;
 		}
 	}
+	
 	private function checkUidCid(int $uid, int $cid): bool {
 		$stmt = $this->database->prepare(
 			'SELECT 1 FROM Connexion WHERE uid = ? AND cid = ? LIMIT 1'
