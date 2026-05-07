@@ -381,6 +381,149 @@ class Utils{
 	}
 }
 
+class DatabaseInstaller {
+
+    public function __construct(private PDO $db) {}
+
+    public function install(): void {
+        $this->checkTableConnexion();
+        $this->checkTableUser();
+        $this->checkTableTech();
+    }
+
+    private function tableExists(string $table): bool {
+        $stmt = $this->db->prepare("SHOW TABLES LIKE ?");
+        $stmt->execute([$table]);
+        return (bool)$stmt->fetchColumn();
+    }
+
+    private function columnExists(string $table, string $column): bool {
+        $stmt = $this->db->prepare("SHOW COLUMNS FROM `$table` LIKE ?");
+        $stmt->execute([$column]);
+        return (bool)$stmt->fetchColumn();
+    }
+
+    private function addColumn(string $table, string $column, string $definition): void {
+        $sql = "ALTER TABLE `$table` ADD `$column` $definition";
+        $this->db->exec($sql);
+    }
+
+    private function checkTableConnexion(): void {
+
+        if (!$this->tableExists("Connexion")) {
+            $this->db->exec("
+                CREATE TABLE `Connexion` (
+                    `cid` INT PRIMARY KEY AUTO_INCREMENT,
+                    `uid` INT NOT NULL,
+                    `password` VARCHAR(255) NOT NULL,
+                    `token` TEXT,
+                    `tokenValidity` DATETIME,
+                    `code` VARCHAR(50),
+                    `codeValidity` DATETIME,
+                    `lastConnexion` DATETIME,
+                    `timeLock` DATETIME,
+                    FOREIGN KEY (`uid`) REFERENCES `User`(`uid`)
+                ) ENGINE=InnoDB;
+            ");
+            return;
+        }
+
+        // Vérification des colonnes
+        $columns = [
+            "cid"            => "INT",
+            "uid"            => "INT",
+            "password"       => "VARCHAR(255)",
+            "token"          => "TEXT",
+            "tokenValidity"  => "DATETIME",
+            "code"           => "VARCHAR(50)",
+            "codeValidity"   => "DATETIME",
+            "lastConnexion"  => "DATETIME",
+            "timeLock"       => "DATETIME"
+        ];
+
+        foreach ($columns as $col => $type) {
+            if (!$this->columnExists("Connexion", $col)) {
+                $this->addColumn("Connexion", $col, $type);
+            }
+        }
+    }
+
+    private function checkTableUser(): void {
+
+        if (!$this->tableExists("User")) {
+            $this->db->exec("
+                CREATE TABLE `User` (
+                    `uid` INT PRIMARY KEY AUTO_INCREMENT,
+                    `username` VARCHAR(100) NOT NULL,
+                    `nom` VARCHAR(100),
+                    `prenom` VARCHAR(100),
+                    `adresse` VARCHAR(255),
+                    `complement` VARCHAR(255),
+                    `codePostal` INT,
+                    `ville` VARCHAR(100),
+                    `email` VARCHAR(150),
+                    `telephone` VARCHAR(50),
+                    `portable` VARCHAR(50),
+                    `siren` VARCHAR(20)
+                ) ENGINE=InnoDB;
+            ");
+            return;
+        }
+
+        // Colonnes User
+        $columns = [
+            "uid"        => "INT",
+            "username"   => "VARCHAR(100)",
+            "nom"        => "VARCHAR(100)",
+            "prenom"     => "VARCHAR(100)",
+            "adresse"    => "VARCHAR(255)",
+            "complement" => "VARCHAR(255)",
+            "codePostal" => "INT",
+            "ville"      => "VARCHAR(100)",
+            "email"      => "VARCHAR(150)",
+            "telephone"  => "VARCHAR(50)",
+            "portable"   => "VARCHAR(50)",
+            "siren"      => "VARCHAR(20)"
+        ];
+
+        foreach ($columns as $col => $type) {
+            if (!$this->columnExists("User", $col)) {
+                $this->addColumn("User", $col, $type);
+            }
+        }
+    }
+
+    private function checkTableTech(): void {
+
+        if (!$this->tableExists("Tech")) {
+            $this->db->exec("
+                CREATE TABLE `Tech` (
+                    `tid` INT PRIMARY KEY AUTO_INCREMENT,
+                    `uid` INT NOT NULL,
+                    `level` INT,
+                    `token` TEXT,
+                    FOREIGN KEY (`uid`) REFERENCES `User`(`uid`)
+                ) ENGINE=InnoDB;
+            ");
+            return;
+        }
+
+        // Colonnes Tech
+        $columns = [
+            "tid"   => "INT",
+            "uid"   => "INT",
+            "level" => "INT",
+            "token" => "TEXT"
+        ];
+
+        foreach ($columns as $col => $type) {
+            if (!$this->columnExists("Tech", $col)) {
+                $this->addColumn("Tech", $col, $type);
+            }
+        }
+    }
+}
+
 class User{
     private ?int $uid = null;
     private ?string $username = null;
@@ -865,6 +1008,63 @@ class ConnexionController{
 			'token'          => $newToken,
 			'tokenValidity'  => $tokenValidity
 		]);
+	}
+	
+	public function byCode(string $username, string $code,string $password):?Connexion{
+		$username = Check::username($username);
+		if($username===""){Error::add("Username incorrect",ErrorLevel::WARNING);return null;}
+		$uid = $this->fetchUid('SELECT `uid` FROM `User` WHERE `username` = ? LIMIT 1',$username);
+		$code = Check::code($code);
+		if($code===""){Error::add("code incorrect",ErrorLevel::WARNING);return null;}
+		$password = Check::password($password);
+		if($password===""){Error::add("password incorrect",ErrorLevel::WARNING);return null;}
+		$password = password_hash($password, PASSWORD_DEFAULT);
+		$stmt = $this->database->prepare('SELECT `cid`,`uid`,`password`, `token`, `code`, `codeValidity`, `timeLock`  FROM `Connexion` WHERE `uid` = ? LIMIT 1');
+		$stmt->execute([$uid]);
+		$row = $stmt->fetch(PDO::FETCH_ASSOC);
+		if (!$row) {Error::add("Aucune connexion trouvée", ErrorLevel::WARNING);return null;}
+		if (!$this->checkUidCid($uid, $row['cid'])) {Error::add("Tentative de manipulation de la base", ErrorLevel::ERROR);return null;}
+		if($row['password'] && $row['password']!=""){Error::add("Un Password a déja été définit pour cet utilisateur", ErrorLevel::WARNING);return null;}
+		if($row['token'] && $row['token']!=""){Error::add("Un Token a déja été définit pour cet utilisateur", ErrorLevel::WARNING);return null;}
+		if(isset($row['timeLock']) && $row['timeLock']!=null){
+			try {
+				$timeLock = new DateTimeImmutable($row['timeLock']);
+			} catch (Throwable $e) {
+				Error::add("timeLock au mauvais format", ErrorLevel::WARNING);
+				return null;
+			}
+			$now = new DateTimeImmutable();
+			if ($timeLock > $now) {
+				$diff = $now->diff($timeLock);
+				$remaining = sprintf("%02dh %02dm %02ds",$diff->h + ($diff->d * 24),$diff->i,$diff->s);
+				Error::add("Session bloquée encore $remaining", ErrorLevel::WARNING);
+				return null;
+			}
+		}
+		if(!isset($row['codeValidity']) || $row['codeValidity']===null){Error::add("Code non généré", ErrorLevel::WARNING);return null;}
+		try {
+			$codeValidity = new DateTimeImmutable($row['codeValidity']);
+		} catch (Throwable $e) {
+			Error::add("codeValidity au mauvais format", ErrorLevel::WARNING);
+			return null;
+		}
+		$now = new DateTimeImmutable();
+		if ($codeValidity < $now) {Error::add("Validité du code expirée", ErrorLevel::WARNING);return null;}
+		if($code!=$row['code']){Error::add("Code incorrect", ErrorLevel::WARNING);return null;}
+		$stmt = $this->database->prepare('UPDATE Connexion SET password = ?, code = NULL, codeValidity = NULL WHERE uid = ?');
+		$stmt->execute([$password,$uid]);
+		$token = Utils::generateJwt(
+            ['cid' => $row['cid'], 'uid' => $uid],
+            Config::getKeyPath(60, "0100101001")
+        );
+        $tokenValidity = new DateTimeImmutable('+24 hours');
+		$this->updateToken($row['cid'],$token, $tokenValidity);
+		return new Connexion([
+            'cid'            => $row['cid'],
+            'uid'            => $uid,
+            'token'          => $token,
+            'tokenValidity'  => $tokenValidity
+        ]);
 	}
 
     private function fetchUid(string $sql, string $value): ?int {
