@@ -1067,6 +1067,58 @@ class ConnexionController{
         ]);
 	}
 
+	public function changePassword(int $cid, string $password, string $newPassword):?Connexion{
+		$cid = Check::cid($cid);
+		if($cid===0){Error::add("Cid incorrect", ErrorLevel::WARNING); return null;}
+		$password = Check::password($password);
+		if($password===""){Error::add("Password incorrect", ErrorLevel::WARNING); return null;}
+		$newPassword = Check::password($newPassword);
+		if($newPassword===""){Error::add("newPassword incorrect", ErrorLevel::WARNING); return null;}
+		$newPassword = password_hash($newPassword,PASSWORD_DEFAULT);
+		
+		
+		
+		$stmt = $this->database->prepare('SELECT `cid`,`uid`,`password`,`timeLock` FROM `Connexion` WHERE `cid` = ? LIMIT 1');
+        $stmt->execute([$cid]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {Error::add("Aucune connexion trouvée", ErrorLevel::WARNING);return null;}
+		if(isset($row['timeLock']) && $row['timeLock']!=null){
+			try {
+				$timeLock = new DateTimeImmutable($row['timeLock']);
+			} catch (Throwable $e) {
+				Error::add("timeLock au mauvais format", ErrorLevel::WARNING);
+				return null;
+			}
+			$now = new DateTimeImmutable();
+			if ($timeLock > $now) {
+				$diff = $now->diff($timeLock);
+				$remaining = sprintf("%02dh %02dm %02ds",$diff->h + ($diff->d * 24),$diff->i,$diff->s);
+				Error::add("Session bloquée encore $remaining", ErrorLevel::WARNING);
+				return null;
+			}
+		}
+        $hash = $row['password'];
+        if (!password_verify($password, $hash)) {
+            Error::add("Mot de passe incorrect", ErrorLevel::ERROR);
+            return null;
+        }
+		$stmt = $this->database->prepare('UPDATE `Connexion` SET `password`=?, `token`=null, `tokenValidity`=null WHERE `cid` = ? LIMIT 1');
+		$stmt->execute([$newPassword,$row['cid']]);
+		$token = Utils::generateJwt(
+            ['cid' => $row['cid'], 'uid' => $row['uid']],
+            Config::getKeyPath(60, "0100101001")
+        );
+        $tokenValidity = new DateTimeImmutable('+24 hours');
+		$this->updateToken($cid,$token, $tokenValidity);
+        return new Connexion([
+            'cid'            => $row['cid'],
+            'uid'            => $row['uid'],
+            'token'          => $token,
+            'tokenValidity'  => $tokenValidity
+        ]);
+		
+	}
+
     private function fetchUid(string $sql, string $value): ?int {
         try {
             $stmt = $this->database->prepare($sql);
