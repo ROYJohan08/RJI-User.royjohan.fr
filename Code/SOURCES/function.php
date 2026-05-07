@@ -762,7 +762,7 @@ class ConnexionController{
             return null;
         }
         $stmt = $this->database->prepare(
-            'SELECT `cid`, `password` FROM `Connexion` WHERE `uid` = ? LIMIT 1'
+            'SELECT `cid`, `password`,`timeLock` FROM `Connexion` WHERE `uid` = ? LIMIT 1'
         );
         $stmt->execute([$uid]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -771,6 +771,26 @@ class ConnexionController{
             return null;
         }
 		
+		if(isset($row['timeLock']) && $row['timeLock']!=null){
+			try {
+				$timeLock = new DateTimeImmutable($row['timeLock']);
+			} catch (Throwable $e) {
+				Error::add("timeLock au mauvais format", ErrorLevel::WARNING);
+				return null;
+			}
+			$now = new DateTimeImmutable();
+			if ($timeLock > $now) {
+				$diff = $now->diff($timeLock);
+					$remaining = sprintf(
+						"%02dh %02dm %02ds",
+						$diff->h + ($diff->d * 24), // conversion jours → heures
+						$diff->i,
+						$diff->s
+					);
+				Error::add("Session bloquée encore $remaining", ErrorLevel::WARNING);
+				return null;
+			}
+		}
         $cid  = (int)$row['cid'];
 		
 		if (!$this->checkUidCid($uid, $cid)) {
@@ -803,10 +823,30 @@ class ConnexionController{
 		if ($token === "") {Error::add("Token incorrect", ErrorLevel::WARNING);return null;}
 		$tokenData = Utils::decodeJwt($token, Config::getKeyPath(1));
 		if ($tokenData === null) {Error::add("Token invalide ou expiré", ErrorLevel::WARNING);return null;}
-		$stmt = $this->database->prepare('SELECT `cid`,`uid`,`token`, `tokenValidity`  FROM `Connexion` WHERE `cid` = ? LIMIT 1');
+		$stmt = $this->database->prepare('SELECT `cid`,`uid`,`token`, `tokenValidity`, `timeLock`  FROM `Connexion` WHERE `cid` = ? LIMIT 1');
 		$stmt->execute([$cid]);
 		$row = $stmt->fetch(PDO::FETCH_ASSOC);
 		if (!$row) {Error::add("Aucune connexion trouvée", ErrorLevel::WARNING);return null;}
+		if(isset($row['timeLock']) && $row['timeLock']!=null){
+			try {
+				$timeLock = new DateTimeImmutable($row['timeLock']);
+			} catch (Throwable $e) {
+				Error::add("timeLock au mauvais format", ErrorLevel::WARNING);
+				return null;
+			}
+			$now = new DateTimeImmutable();
+			if ($timeLock > $now) {
+				$diff = $now->diff($timeLock);
+					$remaining = sprintf(
+						"%02dh %02dm %02ds",
+						$diff->h + ($diff->d * 24), // conversion jours → heures
+						$diff->i,
+						$diff->s
+					);
+				Error::add("Session bloquée encore $remaining", ErrorLevel::WARNING);
+				return null;
+			}
+		}
 		if ($tokenData['uid'] != $row['uid']) {Error::add("Tentative de manipulation de la base de donnée", ErrorLevel::WARNING);return null;}
 		if ($token !== $row['token']) {Error::add("Token mismatch", ErrorLevel::WARNING);return null;}
 		try {
@@ -842,13 +882,19 @@ class ConnexionController{
 	private function updateToken(int $cid, string $token, DateTimeImmutable $validity): bool {
 		try {
 			$stmt = $this->database->prepare(
-				'UPDATE `Connexion` SET `token` = ?, `tokenValidity` = ? WHERE `cid` = ?'
+				'UPDATE `Connexion` 
+				 SET `token` = ?, 
+					 `tokenValidity` = ?, 
+					 `lastConnexion` = NOW()
+				 WHERE `cid` = ?'
 			);
+
 			return $stmt->execute([
 				$token,
 				$validity->format('Y-m-d H:i:s'),
 				$cid
 			]);
+
 		} catch (Throwable $e) {
 			Error::add("Erreur updateToken : " . $e->getMessage(), ErrorLevel::ERROR);
 			return false;
