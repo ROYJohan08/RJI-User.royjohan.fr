@@ -27,7 +27,6 @@ class ErrorItem {
 
 class Error {
 
-    /** @var ErrorItem[] */
     private static array $errors = [];
 
     public static function add(string $content, ErrorLevel $level): bool {
@@ -679,7 +678,7 @@ class TechController{
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             return $result ? (int)$result['tid'] : null;
         } catch (Throwable $e) {
-            Error::add("Erreur fetchUid : " . $e->getMessage(), ErrorLevel::ERROR);
+            Error::add("Erreur fetchTid : " . $e->getMessage(), ErrorLevel::ERROR);
             return null;
         }
 	}
@@ -688,15 +687,16 @@ class TechController{
 
 
 class Connexion{
-	private ?int               $cid=null;
-	private ?string            $uid=null;
-	private ?string            $token=null;
-	private ?DateTimeImmutable $tokenValidity=null;
-	
-	public function __construct(array $data){
-		$this->hydrate($data);
-	}
-	public function hydrate(array $data): void{
+    private ?int               $cid = null;
+    private ?int               $uid = null;
+    private ?string            $token = null;
+    private ?DateTimeImmutable $tokenValidity = null;
+
+    public function __construct(array $data){
+        $this->hydrate($data);
+    }
+
+    public function hydrate(array $data): void{
         foreach ($data as $key => $value) {
             $method = "set" . ucfirst(Utils::toCamelCase($key));
             if (method_exists($this, $method)) {
@@ -704,15 +704,134 @@ class Connexion{
             }
         }
     }
-	public function getCid():?int{return $this->cid;}
-	public function getUid():?int{return $this->uid;}
-	public function getToken():?string{return $this->token;}
-	public function getTokenValidity():?DateTimeImmutable{return $this->tokenValidity;}
-	
-	public function setUid(?string $v): void { $this->uid = $v !== null ? Check::uid($v) : null; }
-	public function setToken(?string $v): void { $this->token = $v !== null ? Check::Token($v) : null; }
-	public function setTokenValidity(?string $v): void { $this->tokenValidity = $v !== null ? Check::futureDate($v) : null; }
-	
+
+    public function getCid(): ?int { return $this->cid; }
+    public function getUid(): ?int { return $this->uid; }
+    public function getToken(): ?string { return $this->token; }
+    public function getTokenValidity(): ?DateTimeImmutable { return $this->tokenValidity; }
+
+    public function setCid(int|string|null $v): void {
+        $this->cid = $v !== null ? Check::cid($v) : null;
+    }
+
+    public function setUid(int|string|null $v): void {
+        $this->uid = $v !== null ? Check::uid($v) : null;
+    }
+
+    public function setToken(?string $v): void {
+        $this->token = $v !== null ? Check::token($v) : null;
+    }
+
+    public function setTokenValidity(string|DateTimeImmutable|null $v): void {
+		if ($v === null) {
+			$this->tokenValidity = null;
+			return;
+		}
+
+		if ($v instanceof DateTimeImmutable) {
+			$this->tokenValidity = $v;
+			return;
+		}
+
+		$this->tokenValidity = Check::futureDate($v);
+	}
+
 }
+
+class ConnexionController{
+    public function __construct(private PDO $database) {}
+
+    public function byUsername(string $username, string $password): ?Connexion {
+        $username = Check::username($username);
+        if ($username === "") {
+            Error::add("Username incorrect", ErrorLevel::WARNING);
+            return null;
+        }
+        $password = Check::password($password);
+        if ($password === "") {
+            Error::add("Password incorrect", ErrorLevel::WARNING);
+            return null;
+        }
+        $uid = $this->fetchUid(
+            'SELECT `uid` FROM `User` WHERE `username` = ? LIMIT 1',
+            $username
+        );
+        if ($uid === null) {
+            Error::add("Impossible de récupérer l'uid", ErrorLevel::WARNING);
+            return null;
+        }
+        $stmt = $this->database->prepare(
+            'SELECT `cid`, `password` FROM `Connexion` WHERE `uid` = ? LIMIT 1'
+        );
+        $stmt->execute([$uid]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            Error::add("Aucune connexion trouvée", ErrorLevel::WARNING);
+            return null;
+        }
+		
+        $cid  = (int)$row['cid'];
+		
+		if (!$this->checkUidCid($uid, $cid)) {
+			Error::add("Tentative de manipulation de la base", ErrorLevel::ERROR);
+			return null;
+		}
+        $hash = $row['password'];
+        if (!password_verify($password, $hash)) {
+            Error::add("Mot de passe incorrect", ErrorLevel::ERROR);
+            return null;
+        }
+        $token = Utils::generateJwt(
+            ['cid' => $cid, 'uid' => $uid],
+            Config::getKeyPath(60, "0100101001")
+        );
+        $tokenValidity = new DateTimeImmutable('+24 hours');
+		$this->updateToken($cid,$token, $tokenValidity);
+        return new Connexion([
+            'cid'            => $cid,
+            'uid'            => $uid,
+            'token'          => $token,
+            'tokenValidity'  => $tokenValidity
+        ]);
+    }
+
+    private function fetchUid(string $sql, string $value): ?int {
+        try {
+            $stmt = $this->database->prepare($sql);
+            $stmt->execute([$value]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $result ? (int)$result['uid'] : null;
+        } catch (Throwable $e) {
+            Error::add("Erreur fetchUid : " . $e->getMessage(), ErrorLevel::ERROR);
+            return null;
+        }
+    }
+	
+	private function updateToken(int $cid, string $token, DateTimeImmutable $validity): bool {
+		try {
+			$stmt = $this->database->prepare(
+				'UPDATE `Connexion` SET `token` = ?, `tokenValidity` = ? WHERE `cid` = ?'
+			);
+			return $stmt->execute([
+				$token,
+				$validity->format('Y-m-d H:i:s'),
+				$cid
+			]);
+		} catch (Throwable $e) {
+			Error::add("Erreur updateToken : " . $e->getMessage(), ErrorLevel::ERROR);
+			return false;
+		}
+	}
+	private function checkUidCid(int $uid, int $cid): bool {
+		$stmt = $this->database->prepare(
+			'SELECT 1 FROM Connexion WHERE uid = ? AND cid = ? LIMIT 1'
+		);
+		$stmt->execute([$uid, $cid]);
+		return (bool)$stmt->fetchColumn();
+	}
+}
+
+
+
 
 ?>
