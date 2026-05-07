@@ -1,7 +1,6 @@
 <?php
-require_once("config.php");
-
 declare(strict_types=1);
+require_once("config.php");
 
 enum ErrorLevel: int {
     case ALL     = 0;
@@ -25,7 +24,7 @@ class ErrorItem {
     ) {}
 }
 
-class Error {
+class Errors {
 
     private static array $errors = [];
 
@@ -83,30 +82,30 @@ class Error {
 
 class Check{
 	
-	public static function cid(string $cid): int {
+	public static function cid(string|int $cid): int {
         return self::validateId($cid, 'C', 'Cid');
     }
 
-    public static function uid(string $uid): int {
+    public static function uid(string|int $uid): int {
         return self::validateId($uid, 'U', 'Uid');
     }
 
-    public static function id(string $iid): int {
+    public static function id(string|int $iid): int {
         return self::validateId($iid, 'I', 'Iid');
     }
 
-    public static function tid(string $tid): int {
+    public static function tid(string|int $tid): int {
         return self::validateId($tid, 'T', 'Tid');
 	}
 	
 	public static function token(string $token): string {
 		$token = trim($token);
 		if ($token === '') {
-			Error::add("Token is empty", ErrorLevel::WARNING);
+			Errors::add("Token is empty", ErrorLevel::WARNING);
 			return "";
 		}
 		if (!preg_match('/^[A-Za-z0-9\-_]+=*\.[A-Za-z0-9\-_]+=*\.[A-Za-z0-9\-_]+=*$/', $token)) {
-			Error::add("Token has an incorrect format", ErrorLevel::WARNING);
+			Errors::add("Token has an incorrect format", ErrorLevel::WARNING);
 			return "";
 		}
 
@@ -120,7 +119,7 @@ class Check{
         if ($isEmail || $isAlpha) {
             return $username;
         }
-        Error::add("Username incorrect (Email ou Nom attendu)", ErrorLevel::WARNING);
+        Errors::add("Username incorrect (Email ou Nom attendu)", ErrorLevel::WARNING);
         return "";
     }
 
@@ -128,7 +127,7 @@ class Check{
         if (preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/', $password)) {
             return $password;
         }
-        Error::add("Password trop faible (8 car. min, 1 Maj, 1 Min, 1 Chiffre)", ErrorLevel::WARNING);
+        Errors::add("Password trop faible (8 car. min, 1 Maj, 1 Min, 1 Chiffre)", ErrorLevel::WARNING);
         return "";
     }
 
@@ -137,7 +136,7 @@ class Check{
         if (preg_match('/^[A-Za-z0-9]{8}$/', $code)) {
             return $code;
         }
-        Error::add("Code incorrect (8 caractères alphanumériques)", ErrorLevel::WARNING);
+        Errors::add("Code incorrect (8 caractères alphanumériques)", ErrorLevel::WARNING);
         return "";
     }
 
@@ -146,7 +145,7 @@ class Check{
         if (preg_match('/^[A-Za-zÀ-ÿ\s\-\']{2,50}$/', $nom)) {
             return $nom;
         }
-        Error::add("Nom invalide", ErrorLevel::WARNING);
+        Errors::add("Nom invalide", ErrorLevel::WARNING);
         return "";
     }
 
@@ -155,7 +154,7 @@ class Check{
         if (preg_match('/^[A-Za-zÀ-ÿ\s\-\']{2,50}$/', $prenom)) {
             return $prenom;
         }
-        Error::add("Prénom invalide", ErrorLevel::WARNING);
+        Errors::add("Prénom invalide", ErrorLevel::WARNING);
         return "";
     }
 
@@ -164,7 +163,7 @@ class Check{
         if (strlen($adresse) > 5) {
             return $adresse;
         }
-        Error::add("Adresse trop courte", ErrorLevel::WARNING);
+        Errors::add("Adresse trop courte", ErrorLevel::WARNING);
         return "";
     }
 
@@ -177,7 +176,7 @@ class Check{
         if (preg_match('/^[0-9]{5}$/', $codePostal)) {
             return $codePostal;
         }
-        Error::add("Code postal invalide (5 chiffres)", ErrorLevel::WARNING);
+        Errors::add("Code postal invalide (5 chiffres)", ErrorLevel::WARNING);
         return "";
     }
    
@@ -186,7 +185,7 @@ class Check{
         if (preg_match('/^[A-Za-zÀ-ÿ\s\-\']{2,100}$/', $ville)) {
             return $ville;
         }
-        Error::add("Ville invalide", ErrorLevel::WARNING);
+        Errors::add("Ville invalide", ErrorLevel::WARNING);
         return "";
     }
 
@@ -195,7 +194,7 @@ class Check{
         if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return $email;
         }
-        Error::add("Format Email invalide", ErrorLevel::WARNING);
+        Errors::add("Format Email invalide", ErrorLevel::WARNING);
         return "";
     }
     
@@ -204,7 +203,7 @@ class Check{
         if (preg_match('/^0[1-5][0-9]{8}$|^09[0-9]{8}$/', $telephone)) {
             return $telephone;
         }
-        Error::add("Téléphone fixe invalide", ErrorLevel::WARNING);
+        Errors::add("Téléphone fixe invalide", ErrorLevel::WARNING);
         return "";
     }
 
@@ -213,7 +212,7 @@ class Check{
         if (preg_match('/^0[67][0-9]{8}$/', $portable)) {
             return $portable;
         }
-        Error::add("Téléphone portable invalide", ErrorLevel::WARNING);
+        Errors::add("Téléphone portable invalide", ErrorLevel::WARNING);
         return "";
     }
 
@@ -221,7 +220,7 @@ class Check{
         $siren = str_replace(' ', '', trim($siren));
 
         if (!preg_match('/^[0-9]{9}$/', $siren)) {
-            Error::add("SIREN invalide (doit contenir 9 chiffres)", ErrorLevel::WARNING);
+            Errors::add("SIREN invalide (doit contenir 9 chiffres)", ErrorLevel::WARNING);
             return "";
         }
         $sum = 0;
@@ -239,38 +238,38 @@ class Check{
             return $siren;
         }
 
-        Error::add("SIREN incorrect (échec de la clé de contrôle)", ErrorLevel::WARNING);
+        Errors::add("SIREN incorrect (échec de la clé de contrôle)", ErrorLevel::WARNING);
         return "";
     }
 	
 	public static function tech(?Tech $tech): bool {
 		if ($tech === null) {
-			Error::add("Tech vide", ErrorLevel::WARNING);
+			Errors::add("Tech vide", ErrorLevel::WARNING);
 			return false;
 		}
 		$tid = $tech->getTid();
 		if ($tid <= 0) {
-			Error::add("Tid incorrect", ErrorLevel::WARNING);
+			Errors::add("Tid incorrect", ErrorLevel::WARNING);
 			return false;
 		}
 
 		$token = $tech->getToken();
 		$token = $tech->getToken();
 		if ($token === null || $token === "") {
-			Error::add("Token vide", ErrorLevel::WARNING);
+			Errors::add("Token vide", ErrorLevel::WARNING);
 			return false;
 		}
 		$data = Utils::decodeJwt($token, Config::getKeyPath(2)); 
 		if ($data === null) {
-			Error::add("JWT incorrect", ErrorLevel::WARNING);
+			Errors::add("JWT incorrect", ErrorLevel::WARNING);
 			return false;
 		}
 		if (!isset($data["data"]["tid"])) {
-			Error::add("JWT incomplet", ErrorLevel::WARNING);
+			Errors::add("JWT incomplet", ErrorLevel::WARNING);
 			return false;
 		}
 		if ($data["data"]["tid"] !== $tid) {
-			Error::add("JWT ne correspond pas", ErrorLevel::WARNING);
+			Errors::add("JWT ne correspond pas", ErrorLevel::WARNING);
 			return false;
 		}
 		return true;
@@ -283,40 +282,48 @@ class Check{
 			try {
 				$date = new \DateTimeImmutable($value);
 			} catch (\Exception $e) {
-				Error::add("Date invalide : format incorrect", ErrorLevel::WARNING);
+				Errors::add("Date invalide : format incorrect", ErrorLevel::WARNING);
 				return null;
 			}
 		} else {
-			Error::add("Date invalide : type non supporté", ErrorLevel::WARNING);
+			Errors::add("Date invalide : type non supporté", ErrorLevel::WARNING);
 			return null;
 		}
 
 		$now = new \DateTimeImmutable('now');
 		if ($date <= $now) {
-			Error::add("Date invalide : doit être dans le futur", ErrorLevel::WARNING);
+			Errors::add("Date invalide : doit être dans le futur", ErrorLevel::WARNING);
 			return null;
 		}
 
 		return $date;
 	}
 	
-	private static function validateId(string $value, string $prefix, string $label):int{
-        $value = trim($value);
-        if ($value === '') {
-            Error::add("$label is empty", ErrorLevel::WARNING);
-            return 0;
-        }
-        if (!preg_match('/^(' . $prefix . '\d+|\d+)$/i', $value)) {
-            Error::add("$label has an incorrect format", ErrorLevel::WARNING);
-            return 0;
-        }
-        if (strtolower($value[0]) === strtolower($prefix)) {
-            $value = substr($value, 1);
-        }
+	private static function validateId(string|int $value, string $prefix, string $label):int{
+        if(is_numeric($value)){
+			if ($value === 0) {
+				Errors::add("$label is empty", ErrorLevel::WARNING);
+				return 0;
+			}
+		}
+		else{
+		$value = trim($value);
+			if ($value === '') {
+				Errors::add("$label is empty", ErrorLevel::WARNING);
+				return 0;
+			}		
+			if (!preg_match('/^(' . $prefix . '\d+|\d+)$/i', $value)) {
+				Errors::add("$label has an incorrect format", ErrorLevel::WARNING);
+				return 0;
+			}
+			if (strtolower($value[0]) === strtolower($prefix)) {
+				$value = substr($value, 1);
+			}
+		}
 		if (!ctype_digit($value)) {
-		Error::add("$label is not numeric", ErrorLevel::WARNING);
-		return 0;
-	}
+			Errors::add("$label is not numeric", ErrorLevel::WARNING);
+			return 0;
+		}
         return (int)$value;
     }
 }
@@ -332,7 +339,7 @@ class Utils{
 		$rawKey = file_get_contents($privateKeyPath);
 		$privateKey = openssl_pkey_get_private($rawKey);
 		if ($privateKey === false) {
-			Error::add("Clé privée invalide", ErrorLevel::ERROR);
+			Errors::add("Clé privée invalide", ErrorLevel::ERROR);
 			return "";
 		}
 		$header = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode(json_encode(['typ' => 'JWT', 'alg' => 'RS256'])));
@@ -342,7 +349,7 @@ class Utils{
 			'data' => $data
 		])));
 		if (!openssl_sign($header . "." . $payload, $signature, $privateKey, OPENSSL_ALGO_SHA256)) {
-			Error::add("Échec de la signature JWT", ErrorLevel::ERROR);
+			Errors::add("Échec de la signature JWT", ErrorLevel::ERROR);
 			return "";
 		}
 		$signature64 = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
@@ -350,13 +357,13 @@ class Utils{
 	}
 	public static function  decodeJwt(string $token, string $publicKeyPath): ?array {
 		if (!file_exists($publicKeyPath)) {
-			Error::add("Clé publique introuvable", ErrorLevel::ERROR);
+			Errors::add("Clé publique introuvable", ErrorLevel::ERROR);
 			return null;
 		}
 		$publicKey = file_get_contents($publicKeyPath);
 		$parts = explode('.', $token);
 		if (count($parts) !== 3) {
-			Error::add("Format de token invalide", ErrorLevel::WARNING);
+			Errors::add("Format de token invalide", ErrorLevel::WARNING);
 			return null;
 		}
 		[$header64, $payload64, $signature64] = $parts;
@@ -371,12 +378,12 @@ class Utils{
 		if ($isValid === 1) {
 			$payload = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $payload64)), true);
 			if (isset($payload['exp']) && $payload['exp'] < time()) {
-				Error::add("Le token a expiré", ErrorLevel::WARNING);
+				Errors::add("Le token a expiré", ErrorLevel::WARNING);
 				return null;
 			}        
 			return $payload;
 		} 
-		Error::add("Signature JWT invalide", ErrorLevel::WARNING);
+		Errors::add("Signature JWT invalide", ErrorLevel::WARNING);
 		return null;
 	}
 }
@@ -386,10 +393,37 @@ class DatabaseInstaller {
     public function __construct(private PDO $db) {}
 
     public function install(): void {
-        $this->checkTableConnexion();
         $this->checkTableUser();
+		$this->checkTableConnexion();
         $this->checkTableTech();
     }
+	
+	public function initTest():void{
+		$username = "ROYJohan";
+		$plainPassword = "Azertyuiop1**1";
+
+		// Hash sécurisé
+		$hash = password_hash($plainPassword, PASSWORD_DEFAULT);
+
+		// 1️⃣ Création de l'utilisateur dans la table User
+		$stmt = $db->prepare("
+			INSERT INTO `User` (`username`)
+			VALUES (?)
+		");
+		$stmt->execute([$username]);
+
+		// Récupération de l'UID généré
+		$uid = $db->lastInsertId();
+
+		// 2️⃣ Création de la ligne Connexion associée
+		$stmt = $db->prepare("
+			INSERT INTO `Connexion` (`uid`, `password`)
+			VALUES (?, ?)
+		");
+		$stmt->execute([$uid, $hash]);
+
+		echo "Utilisateur ROYJohan créé avec succès avec UID $uid.";
+	}
 
     private function tableExists(string $table): bool {
         $stmt = $this->db->prepare("SHOW TABLES LIKE ?");
@@ -599,7 +633,7 @@ class UserController {
             return $user;
 
         } catch (Throwable $e) {
-            Error::add("Erreur getByUid : " . $e->getMessage(), ErrorLevel::ERROR);
+            Errors::add("Erreur getByUid : " . $e->getMessage(), ErrorLevel::ERROR);
             return null;
         }
     }
@@ -636,7 +670,7 @@ class UserController {
             if ($user->getUid() === null) {
 
                 if ($tech === null || !Check::tech($tech)) {
-                    Error::add("Ajout d'un user refusé, Tech invalide", ErrorLevel::WARNING);
+                    Errors::add("Ajout d'un user refusé, Tech invalide", ErrorLevel::WARNING);
                     return false;
                 }
 
@@ -663,7 +697,7 @@ class UserController {
             if (($tech === null || !Check::tech($tech)) &&
                 (!isset($_SESSION['Username']) || $user->getUsername() !== $_SESSION['Username'])) {
 
-                Error::add("Modification d'un user refusée, Tech invalide ou User non autorisé", ErrorLevel::WARNING);
+                Errors::add("Modification d'un user refusée, Tech invalide ou User non autorisé", ErrorLevel::WARNING);
                 return false;
             }
 
@@ -679,19 +713,19 @@ class UserController {
             ]);
 
         } catch (Throwable $e) {
-            Error::add("Erreur save User : " . $e->getMessage(), ErrorLevel::ERROR);
+            Errors::add("Erreur save User : " . $e->getMessage(), ErrorLevel::ERROR);
             return false;
         }
     }
 
     public function delete(User $user, Tech $tech): bool {
         if ($user->getUid() === null) {
-            Error::add("Impossible de supprimer un User sans Uid", ErrorLevel::WARNING);
+            Errors::add("Impossible de supprimer un User sans Uid", ErrorLevel::WARNING);
             return false;
         }
 
         if ($tech === null || !Check::tech($tech)) {
-            Error::add("Suppression d'un user refusée, Tech invalide", ErrorLevel::WARNING);
+            Errors::add("Suppression d'un user refusée, Tech invalide", ErrorLevel::WARNING);
             return false;
         }
 
@@ -699,7 +733,7 @@ class UserController {
             $stmt = $this->database->prepare('DELETE FROM `User` WHERE `uid` = ?');
             return $stmt->execute([$user->getUid()]);
         } catch (Throwable $e) {
-            Error::add("Erreur delete User : " . $e->getMessage(), ErrorLevel::ERROR);
+            Errors::add("Erreur delete User : " . $e->getMessage(), ErrorLevel::ERROR);
             return false;
         }
     }
@@ -711,7 +745,7 @@ class UserController {
 			$result = $stmt->fetch(PDO::FETCH_ASSOC);
 			return $result ? (int)$result['uid'] : null;
 		} catch (Throwable $e) {
-			Error::add("Erreur fetchUid : " . $e->getMessage(), ErrorLevel::ERROR);
+			Errors::add("Erreur fetchUid : " . $e->getMessage(), ErrorLevel::ERROR);
 			return null;
 		}
     }
@@ -769,7 +803,7 @@ class TechController{
             return $tech;
 
         } catch (Throwable $e) {
-            Error::add("Erreur getByTid : " . $e->getMessage(), ErrorLevel::ERROR);
+            Errors::add("Erreur getByTid : " . $e->getMessage(), ErrorLevel::ERROR);
             return null;
         }
 	}
@@ -791,15 +825,15 @@ class TechController{
 	}
 	public function delete(Tech $techToDelete, Tech $tech): bool {
 		if ($techToDelete->getTid() === null || $techToDelete->getTid() <= 0 || $tech->getTid() === null || $tech->getTid() <= 0) {
-			Error::add("IDs invalides pour la suppression", ErrorLevel::WARNING);
+			Errors::add("IDs invalides pour la suppression", ErrorLevel::WARNING);
 			return false;
 		}
 		if (!Check::tech($tech)) {
-			Error::add("Technicien effectuant l'action invalide", ErrorLevel::WARNING);
+			Errors::add("Technicien effectuant l'action invalide", ErrorLevel::WARNING);
 			return false;
 		}
 		if ($tech->getLevel()->value <= $techToDelete->getLevel()->value) {
-			Error::add("Permissions insuffisantes : niveau supérieur requis", ErrorLevel::WARNING);
+			Errors::add("Permissions insuffisantes : niveau supérieur requis", ErrorLevel::WARNING);
 			return false;
 		}
 		try {
@@ -808,10 +842,10 @@ class TechController{
 			if ($ok && $stmt->rowCount() > 0) {
 				return true;
 			}
-			Error::add("Aucun enregistrement supprimé", ErrorLevel::WARNING);
+			Errors::add("Aucun enregistrement supprimé", ErrorLevel::WARNING);
 			return false;
 		} catch (Throwable $e) {
-			Error::add("Erreur lors de la suppression Tech : " . $e->getMessage(), ErrorLevel::ERROR);
+			Errors::add("Erreur lors de la suppression Tech : " . $e->getMessage(), ErrorLevel::ERROR);
 			return false;
 		}
 	}
@@ -822,7 +856,7 @@ class TechController{
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             return $result ? (int)$result['tid'] : null;
         } catch (Throwable $e) {
-            Error::add("Erreur fetchTid : " . $e->getMessage(), ErrorLevel::ERROR);
+            Errors::add("Erreur fetchTid : " . $e->getMessage(), ErrorLevel::ERROR);
             return null;
         }
 	}
@@ -888,12 +922,12 @@ class ConnexionController{
     public function byUsername(string $username, string $password): ?Connexion {
         $username = Check::username($username);
         if ($username === "") {
-            Error::add("Username incorrect", ErrorLevel::WARNING);
+            Errors::add("Username incorrect", ErrorLevel::ERROR);
             return null;
         }
         $password = Check::password($password);
         if ($password === "") {
-            Error::add("Password incorrect", ErrorLevel::WARNING);
+            Errors::add("Password incorrect", ErrorLevel::ERROR);
             return null;
         }
         $uid = $this->fetchUid(
@@ -901,7 +935,7 @@ class ConnexionController{
             $username
         );
         if ($uid === null) {
-            Error::add("Impossible de récupérer l'uid", ErrorLevel::WARNING);
+            Errors::add("Impossible de récupérer l'uid", ErrorLevel::WARNING);
             return null;
         }
         $stmt = $this->database->prepare(
@@ -910,7 +944,7 @@ class ConnexionController{
         $stmt->execute([$uid]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) {
-            Error::add("Aucune connexion trouvée", ErrorLevel::WARNING);
+            Errors::add("Aucune connexion trouvée", ErrorLevel::WARNING);
             return null;
         }
 		
@@ -918,7 +952,7 @@ class ConnexionController{
 			try {
 				$timeLock = new DateTimeImmutable($row['timeLock']);
 			} catch (Throwable $e) {
-				Error::add("timeLock au mauvais format", ErrorLevel::WARNING);
+				Errors::add("timeLock au mauvais format", ErrorLevel::WARNING);
 				return null;
 			}
 			$now = new DateTimeImmutable();
@@ -930,19 +964,19 @@ class ConnexionController{
 						$diff->i,
 						$diff->s
 					);
-				Error::add("Session bloquée encore $remaining", ErrorLevel::WARNING);
+				Errors::add("Session bloquée encore $remaining", ErrorLevel::ERROR);
 				return null;
 			}
 		}
         $cid  = (int)$row['cid'];
 		
 		if (!$this->checkUidCid($uid, $cid)) {
-			Error::add("Tentative de manipulation de la base", ErrorLevel::ERROR);
+			Errors::add("Tentative de manipulation de la base", ErrorLevel::ERROR);
 			return null;
 		}
         $hash = $row['password'];
         if (!password_verify($password, $hash)) {
-            Error::add("Mot de passe incorrect", ErrorLevel::ERROR);
+            Errors::add("Mot de passe incorrect", ErrorLevel::ERROR);
             return null;
         }
         $token = Utils::generateJwt(
@@ -961,20 +995,20 @@ class ConnexionController{
 
 	public function byToken(int $cid, string $token) {
 		$cid = Check::cid($cid);
-		if ($cid === 0) {Error::add("Cid incorrect", ErrorLevel::WARNING);return null;}
+		if ($cid === 0) {Errors::add("Cid incorrect", ErrorLevel::WARNING);return null;}
 		$token = Check::token($token);
-		if ($token === "") {Error::add("Token incorrect", ErrorLevel::WARNING);return null;}
+		if ($token === "") {Errors::add("Token incorrect", ErrorLevel::WARNING);return null;}
 		$tokenData = Utils::decodeJwt($token, Config::getKeyPath(1));
-		if ($tokenData === null) {Error::add("Token invalide ou expiré", ErrorLevel::WARNING);return null;}
+		if ($tokenData === null) {Errors::add("Token invalide ou expiré", ErrorLevel::WARNING);return null;}
 		$stmt = $this->database->prepare('SELECT `cid`,`uid`,`token`, `tokenValidity`, `timeLock`  FROM `Connexion` WHERE `cid` = ? LIMIT 1');
 		$stmt->execute([$cid]);
 		$row = $stmt->fetch(PDO::FETCH_ASSOC);
-		if (!$row) {Error::add("Aucune connexion trouvée", ErrorLevel::WARNING);return null;}
+		if (!$row) {Errors::add("Aucune connexion trouvée", ErrorLevel::WARNING);return null;}
 		if(isset($row['timeLock']) && $row['timeLock']!=null){
 			try {
 				$timeLock = new DateTimeImmutable($row['timeLock']);
 			} catch (Throwable $e) {
-				Error::add("timeLock au mauvais format", ErrorLevel::WARNING);
+				Errors::add("timeLock au mauvais format", ErrorLevel::WARNING);
 				return null;
 			}
 			$now = new DateTimeImmutable();
@@ -986,19 +1020,19 @@ class ConnexionController{
 						$diff->i,
 						$diff->s
 					);
-				Error::add("Session bloquée encore $remaining", ErrorLevel::WARNING);
+				Errors::add("Session bloquée encore $remaining", ErrorLevel::WARNING);
 				return null;
 			}
 		}
-		if ($tokenData['uid'] != $row['uid']) {Error::add("Tentative de manipulation de la base de donnée", ErrorLevel::WARNING);return null;}
-		if ($token !== $row['token']) {Error::add("Token mismatch", ErrorLevel::WARNING);return null;}
+		if ($tokenData['uid'] != $row['uid']) {Errors::add("Tentative de manipulation de la base de donnée", ErrorLevel::WARNING);return null;}
+		if ($token !== $row['token']) {Errors::add("Token mismatch", ErrorLevel::WARNING);return null;}
 		try {
 			$validity = new DateTimeImmutable($row['tokenValidity']);
 		} catch (Throwable $e) {
-			Error::add("tokenValidity au mauvais format", ErrorLevel::WARNING);
+			Errors::add("tokenValidity au mauvais format", ErrorLevel::WARNING);
 			return null;
 		}
-		if ($validity < new DateTimeImmutable()) {Error::add("Token expiré", ErrorLevel::WARNING);return null;}
+		if ($validity < new DateTimeImmutable()) {Errors::add("Token expiré", ErrorLevel::WARNING);return null;}
 		$newToken = Utils::generateJwt(['cid' => $cid, 'uid' => $tokenData['uid']],Config::getKeyPath(60, "0100101001"));
 		$tokenValidity = new DateTimeImmutable('+24 hours');
 		$this->updateToken($cid, $newToken, $tokenValidity);
@@ -1012,45 +1046,45 @@ class ConnexionController{
 	
 	public function byCode(string $username, string $code,string $password):?Connexion{
 		$username = Check::username($username);
-		if($username===""){Error::add("Username incorrect",ErrorLevel::WARNING);return null;}
+		if($username===""){Errors::add("Username incorrect",ErrorLevel::WARNING);return null;}
 		$uid = $this->fetchUid('SELECT `uid` FROM `User` WHERE `username` = ? LIMIT 1',$username);
 		$code = Check::code($code);
-		if($code===""){Error::add("code incorrect",ErrorLevel::WARNING);return null;}
+		if($code===""){Errors::add("code incorrect",ErrorLevel::WARNING);return null;}
 		$password = Check::password($password);
-		if($password===""){Error::add("password incorrect",ErrorLevel::WARNING);return null;}
+		if($password===""){Errors::add("password incorrect",ErrorLevel::WARNING);return null;}
 		$password = password_hash($password, PASSWORD_DEFAULT);
 		$stmt = $this->database->prepare('SELECT `cid`,`uid`,`password`, `token`, `code`, `codeValidity`, `timeLock`  FROM `Connexion` WHERE `uid` = ? LIMIT 1');
 		$stmt->execute([$uid]);
 		$row = $stmt->fetch(PDO::FETCH_ASSOC);
-		if (!$row) {Error::add("Aucune connexion trouvée", ErrorLevel::WARNING);return null;}
-		if (!$this->checkUidCid($uid, $row['cid'])) {Error::add("Tentative de manipulation de la base", ErrorLevel::ERROR);return null;}
-		if($row['password'] && $row['password']!=""){Error::add("Un Password a déja été définit pour cet utilisateur", ErrorLevel::WARNING);return null;}
-		if($row['token'] && $row['token']!=""){Error::add("Un Token a déja été définit pour cet utilisateur", ErrorLevel::WARNING);return null;}
+		if (!$row) {Errors::add("Aucune connexion trouvée", ErrorLevel::WARNING);return null;}
+		if (!$this->checkUidCid($uid, $row['cid'])) {Errors::add("Tentative de manipulation de la base", ErrorLevel::ERROR);return null;}
+		if($row['password'] && $row['password']!=""){Errors::add("Un Password a déja été définit pour cet utilisateur", ErrorLevel::WARNING);return null;}
+		if($row['token'] && $row['token']!=""){Errors::add("Un Token a déja été définit pour cet utilisateur", ErrorLevel::WARNING);return null;}
 		if(isset($row['timeLock']) && $row['timeLock']!=null){
 			try {
 				$timeLock = new DateTimeImmutable($row['timeLock']);
 			} catch (Throwable $e) {
-				Error::add("timeLock au mauvais format", ErrorLevel::WARNING);
+				Errors::add("timeLock au mauvais format", ErrorLevel::WARNING);
 				return null;
 			}
 			$now = new DateTimeImmutable();
 			if ($timeLock > $now) {
 				$diff = $now->diff($timeLock);
 				$remaining = sprintf("%02dh %02dm %02ds",$diff->h + ($diff->d * 24),$diff->i,$diff->s);
-				Error::add("Session bloquée encore $remaining", ErrorLevel::WARNING);
+				Errors::add("Session bloquée encore $remaining", ErrorLevel::WARNING);
 				return null;
 			}
 		}
-		if(!isset($row['codeValidity']) || $row['codeValidity']===null){Error::add("Code non généré", ErrorLevel::WARNING);return null;}
+		if(!isset($row['codeValidity']) || $row['codeValidity']===null){Errors::add("Code non généré", ErrorLevel::WARNING);return null;}
 		try {
 			$codeValidity = new DateTimeImmutable($row['codeValidity']);
 		} catch (Throwable $e) {
-			Error::add("codeValidity au mauvais format", ErrorLevel::WARNING);
+			Errors::add("codeValidity au mauvais format", ErrorLevel::WARNING);
 			return null;
 		}
 		$now = new DateTimeImmutable();
-		if ($codeValidity < $now) {Error::add("Validité du code expirée", ErrorLevel::WARNING);return null;}
-		if($code!=$row['code']){Error::add("Code incorrect", ErrorLevel::WARNING);return null;}
+		if ($codeValidity < $now) {Errors::add("Validité du code expirée", ErrorLevel::WARNING);return null;}
+		if($code!=$row['code']){Errors::add("Code incorrect", ErrorLevel::WARNING);return null;}
 		$stmt = $this->database->prepare('UPDATE Connexion SET password = ?, code = NULL, codeValidity = NULL WHERE uid = ?');
 		$stmt->execute([$password,$uid]);
 		$token = Utils::generateJwt(
@@ -1069,11 +1103,11 @@ class ConnexionController{
 
 	public function changePassword(int $cid, string $password, string $newPassword):?Connexion{
 		$cid = Check::cid($cid);
-		if($cid===0){Error::add("Cid incorrect", ErrorLevel::WARNING); return null;}
+		if($cid===0){Errors::add("Cid incorrect", ErrorLevel::WARNING); return null;}
 		$password = Check::password($password);
-		if($password===""){Error::add("Password incorrect", ErrorLevel::WARNING); return null;}
+		if($password===""){Errors::add("Password incorrect", ErrorLevel::WARNING); return null;}
 		$newPassword = Check::password($newPassword);
-		if($newPassword===""){Error::add("newPassword incorrect", ErrorLevel::WARNING); return null;}
+		if($newPassword===""){Errors::add("newPassword incorrect", ErrorLevel::WARNING); return null;}
 		$newPassword = password_hash($newPassword,PASSWORD_DEFAULT);
 		
 		
@@ -1081,25 +1115,25 @@ class ConnexionController{
 		$stmt = $this->database->prepare('SELECT `cid`,`uid`,`password`,`timeLock` FROM `Connexion` WHERE `cid` = ? LIMIT 1');
         $stmt->execute([$cid]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$row) {Error::add("Aucune connexion trouvée", ErrorLevel::WARNING);return null;}
+        if (!$row) {Errors::add("Aucune connexion trouvée", ErrorLevel::WARNING);return null;}
 		if(isset($row['timeLock']) && $row['timeLock']!=null){
 			try {
 				$timeLock = new DateTimeImmutable($row['timeLock']);
 			} catch (Throwable $e) {
-				Error::add("timeLock au mauvais format", ErrorLevel::WARNING);
+				Errors::add("timeLock au mauvais format", ErrorLevel::WARNING);
 				return null;
 			}
 			$now = new DateTimeImmutable();
 			if ($timeLock > $now) {
 				$diff = $now->diff($timeLock);
 				$remaining = sprintf("%02dh %02dm %02ds",$diff->h + ($diff->d * 24),$diff->i,$diff->s);
-				Error::add("Session bloquée encore $remaining", ErrorLevel::WARNING);
+				Errors::add("Session bloquée encore $remaining", ErrorLevel::WARNING);
 				return null;
 			}
 		}
         $hash = $row['password'];
         if (!password_verify($password, $hash)) {
-            Error::add("Mot de passe incorrect", ErrorLevel::ERROR);
+            Errors::add("Mot de passe incorrect", ErrorLevel::ERROR);
             return null;
         }
 		$stmt = $this->database->prepare('UPDATE `Connexion` SET `password`=?, `token`=null, `tokenValidity`=null WHERE `cid` = ? LIMIT 1');
@@ -1126,7 +1160,7 @@ class ConnexionController{
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             return $result ? (int)$result['uid'] : null;
         } catch (Throwable $e) {
-            Error::add("Erreur fetchUid : " . $e->getMessage(), ErrorLevel::ERROR);
+            Errors::add("Erreur fetchUid : " . $e->getMessage(), ErrorLevel::ERROR);
             return null;
         }
     }
@@ -1148,7 +1182,7 @@ class ConnexionController{
 			]);
 
 		} catch (Throwable $e) {
-			Error::add("Erreur updateToken : " . $e->getMessage(), ErrorLevel::ERROR);
+			Errors::add("Erreur updateToken : " . $e->getMessage(), ErrorLevel::ERROR);
 			return false;
 		}
 	}
