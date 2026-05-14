@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 session_start();
-require_once("config.php");
+require_once("./SOURCES/config.php");
 
 enum ErrorLevel: int {
     case ALL     = 0;

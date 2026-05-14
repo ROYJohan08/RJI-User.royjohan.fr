@@ -1,5 +1,5 @@
 <?php
-require_once 'function.php';
+require_once './SOURCES/function.php';
 
 try {
     $db = new PDO(
