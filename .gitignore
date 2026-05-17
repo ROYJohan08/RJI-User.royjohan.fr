@@ -1,0 +1,7 @@
+# Ignorer tous les .pri, .pub, .conf dans tous les sous-dossiers
+**/*.pri
+**/*.pub
+**/*.conf
+
+# Mais garder main.conf
+!**/main.conf
