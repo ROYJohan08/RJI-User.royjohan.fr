@@ -1,5 +1,5 @@
 <?php
-
+	require_once(__DIR__ . "/errors.php");
 	enum Role: int {
 		case UTILISATEUR    = 1 << 0;
 		case ADMINISTRATEUR = 1 << 1;
@@ -173,6 +173,86 @@
 				Errors::add("Erreur createDatabase : " . $e->getMessage(), ErrorLevel::ERROR);
 			}
 		}
+		
+		public function save(UserCard $cible, UserCard $modificateur): int {
+			if ($modificateur->getUid() === null) {
+				Errors::add("Authentification requise", ErrorLevel::ERROR);
+				return 0;
+			}
+			$isAdmin    = ($modificateur->hasRole(Role::ADMINISTRATEUR) || $modificateur->hasRole(Role::TECHNICIEN) || $modificateur->hasRole(Role::COMMERCIAL));
+			$isCreation = ($cible->getUid() === null);---
+			if ($isCreation) {
+				if (!$isAdmin) {
+					Errors::add("Droits insuffisants pour créer un utilisateur", ErrorLevel::ERROR);
+					return 0;
+				}
+			}
+			else {
+				if ($modificateur->getUid() !== $cible->getUid() && !$isAdmin) {
+					Errors::add("Droits insuffisants pour modifier cet utilisateur", ErrorLevel::ERROR);
+					return 0;
+				}
+			}
+			try {
+				if ($isCreation) {
+					$stmt = $pdo->prepare("INSERT INTO UserCard (username, nom, prenom, adresse, complement, codePostal, ville, email, telephone, portable, siren) VALUES (:username, :nom, :prenom, :adresse, :complement, :codePostal, :ville, :email, :telephone, :portable, :siren)");
+					$stmt->execute([':username' => $cible->getUsername(),':nom' => $cible->getNom(),':prenom' => $cible->getPrenom(),':adresse' => $cible->getAdresse(),':complement' => $cible->getComplement(),':codePostal' => $cible->getCodePostal(),':ville' => $cible->getVille(),':email' => $cible->getEmail(),':telephone' => $cible->getTelephone(),':portable' => $cible->getPortable(),':siren' => $cible->getSiren()]);
+					$uid = (int) $pdo->lastInsertId();
+					$cible->setUid($uid);
+					return $uid;
+				}
+				else {
+					$stmt = $pdo->prepare("UPDATE UserCard SET username = :username, nom = :nom, prenom = :prenom, adresse = :adresse, complement = :complement, codePostal = :codePostal, ville = :ville, email = :email, telephone = :telephone, portable = :portable, siren = :siren WHERE uid = :uid");
+					$stmt->execute([':username' => $cible->getUsername(), ':nom' => $cible->getNom(), ':prenom' => $cible->getPrenom(), ':adresse' => $cible->getAdresse(), ':complement' => $cible->getComplement(), ':codePostal' => $cible->getCodePostal(), ':ville' => $cible->getVille(), ':email' => $cible->getEmail(), ':telephone'  => $cible->getTelephone(), ':portable' => $cible->getPortable(), ':siren' => $cible->getSiren(), ':uid' => $cible->getUid() ]);
+					return $cible->getUid();
+				}
+			}
+			catch (PDOException $e) {
+				Errors::add("Erreur SQL : " . $e->getMessage(), ErrorLevel::ERROR);
+				return 0;
+			}
+		}
+		public function get(int $uid = null, string $telephone = null): ?UserCard {
+			if ($uid === null && ($telephone === null || $telephone === "")) {
+				Errors::add("Aucun critère fourni pour récupérer un utilisateur", ErrorLevel::ERROR);
+				return null;
+			}
+			$pdo = Config::getPDO();
+			try {
+				if ($uid !== null) {
+					$stmt = $pdo->prepare("SELECT * FROM UserCard WHERE uid = :uid LIMIT 1");
+					$stmt->execute([':uid' => $uid]);
+				}
+				else {
+					$stmt = $pdo->prepare("SELECT * FROM UserCard WHERE telephone = :telephone LIMIT 1");
+					$stmt->execute([':telephone' => $telephone]);
+				}
+				$row = $stmt->fetch(PDO::FETCH_ASSOC);
+				if (!$row) {
+					Errors::add("Aucun utilisateur trouvé", ErrorLevel::ERROR);
+					return null;
+				}
+				$user = new UserCard();
+				$user->setUid((int) $row['uid']);
+				$user->setUsername($row['username']);
+				$user->setNom($row['nom']);
+				$user->setPrenom($row['prenom']);
+				$user->setAdresse($row['adresse']);
+				$user->setComplement($row['complement']);
+				$user->setCodePostal($row['codePostal']);
+				$user->setVille($row['ville']);
+				$user->setEmail($row['email']);
+				$user->setTelephone($row['telephone']);
+				$user->setPortable($row['portable']);
+				$user->setSiren($row['siren']);
+				return $user;
+			}
+			catch (PDOException $e) {
+				Errors::add("Erreur SQL : " . $e->getMessage(), ErrorLevel::ERROR);
+				return null;
+			}
+		}
+
 	}
 
 ?>
