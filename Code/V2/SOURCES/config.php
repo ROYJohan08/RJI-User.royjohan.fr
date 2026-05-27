@@ -11,7 +11,6 @@
 			if ($configFilePath === null) {
 				$configFiles = $this->findConfFiles();
 				foreach ($configFiles as $file) {
-					echo "Config : ".$file;
 					$data = $this->parseConfFile($file);
 					if ($data !== [] && isset($data['VERSION'], $data['AUTHOR'])){
 						$version = $data['VERSION'];
@@ -23,15 +22,13 @@
 								$this->oldConfigFilePath = $this->configFilePath;
 							}
 							$this->configFilePath = $file;
-							echo " : Valide<br/>";
 						}
 						else{
 							if ($this->oldConfigFilePath!==null){
 								$this->oldConfigFilePath = $this->configFilePath;
 							}
-							echo " : Plus ancienne<br/>";}
+						}
 					}
-					else{echo " : En erreur<br/>";}
 				}
 			}
 			else{
@@ -54,7 +51,7 @@
 		public function getAuthor(): string {
 			return $this->author ?? "";
 		}
-		public function getData(string $name): string {
+		public function get(string $name): string {
 			if ($this->data === null) {
 				return "";
 			}

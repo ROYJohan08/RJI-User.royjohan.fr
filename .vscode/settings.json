@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^php -l Code\\\\V2\\\\SOURCES\\\\connexion\\.php$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
