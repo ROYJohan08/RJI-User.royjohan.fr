@@ -9,6 +9,7 @@
 	 */
 
 	require_once(__DIR__ . "/errors.php");
+	require_once(__DIR__ . "/user.php");
 
 
 	/**
@@ -255,60 +256,38 @@
 			}
 		}
 
-		public function connect(string $emailOuTelephone, string $password): ?ConnexionCard {
-			// Normaliser le téléphone si c'est un téléphone
-			$telephone = $emailOuTelephone;
-			if (preg_match('/^(?:\+33|0)[1-9]/', $emailOuTelephone)) {
-				$telephone = str_replace(['.', ' ', '-'], '', $emailOuTelephone);
-			}
+		public function connect(string $telephone, string $password): ?ConnexionCard {
 
-			// Étape 1 : Chercher dans user_user pour obtenir cid et uid
-			$stmt = $this->Database->prepare("
-				SELECT u.uid, c.cid 
-				FROM user_user u
-				LEFT JOIN user_connexion c ON u.uid = c.uid
-				WHERE u.email = :email OR u.telephone = :telephone OR u.username = :username
-				LIMIT 1
-			");
-			$stmt->execute([
-				':email'     => $emailOuTelephone,
-				':telephone' => $telephone,
-				':username'  => $emailOuTelephone
-			]);
-			$userRow = $stmt->fetch(PDO::FETCH_ASSOC);
+			// Normalisation du téléphone
+			$telephone = str_replace(['.', ' ', '-'], '', $telephone);
 
-			if (!$userRow || !$userRow['cid']) {
-				Errors::add("Utilisateur ou connexion introuvable", ErrorLevel::ERROR);
+			// Étape 1 : Récupérer l'utilisateur
+			$user = (new User($this->Database))->get(null, $telephone);
+			if ($user === null) {
+				Errors::add("Utilisateur introuvable pour le téléphone : " . $telephone, ErrorLevel::ERROR);
 				return null;
 			}
 
-			$uid = (int)$userRow['uid'];
-			$cid = (int)$userRow['cid'];
+			// Préparer la ConnexionCard
+			$card = new ConnexionCard();
+			$card->setUid($user->getUid());
+			$card->setTelephone($telephone);
 
-			// Étape 2 : Créer une ConnexionCard et vérifier le verrouillage via updateTry
-			$card = new ConnexionCard(['cid' => $cid, 'uid' => $uid]);
-			$card = $this->updateTry($card, false); // Lecture de l'historique et vérification du verrouillage
-
-			if (!$card) {
-				Errors::add("Erreur lors de la vérification de l'historique", ErrorLevel::ERROR);
-				return null;
-			}
-
-			// Si locked, enregistrer l'essai et retourner null
-			if ($card->getLocked()) {
+			// Vérifier si le compte est verrouillé
+			if ($user->getLocked()) {
 				$this->updateTry($card, ['type' => 'locked', 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
-				Errors::add("Compte verrouillé suite à trop de tentatives", ErrorLevel::WARNING);
+				Errors::add("Compte utilisateur verrouillé.", ErrorLevel::WARNING);
 				return null;
 			}
 
-			// Étape 3 : Aller chercher dans user_connexion avec l'uid
+			// Étape 2 : Récupérer la ligne user_connexion
 			$stmt = $this->Database->prepare("
-				SELECT cid, uid, telephone, password, role, lastConnexion
+				SELECT cid, uid, telephone, password
 				FROM user_connexion
-				WHERE uid = :uid AND cid = :cid
+				WHERE uid = :uid
 				LIMIT 1
 			");
-			$stmt->execute([':uid' => $uid, ':cid' => $cid]);
+			$stmt->execute([':uid' => $user->getUid()]);
 			$connexionRow = $stmt->fetch(PDO::FETCH_ASSOC);
 
 			if (!$connexionRow) {
@@ -317,7 +296,7 @@
 				return null;
 			}
 
-			// Étape 4 : Vérifier que le téléphone correspond
+			// Vérifier correspondance téléphone
 			$connexionTelephone = str_replace(['.', ' ', '-'], '', $connexionRow['telephone']);
 			if ($connexionTelephone !== $telephone) {
 				$this->updateTry($card, ['type' => 'failed', 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
@@ -325,52 +304,115 @@
 				return null;
 			}
 
-			// Étape 5 : Vérifier le hash du password
+			// Vérifier mot de passe
 			if (!password_verify($password, $connexionRow['password'])) {
 				$this->updateTry($card, ['type' => 'failed', 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
 				Errors::add("Mot de passe incorrect", ErrorLevel::ERROR);
 				return null;
 			}
 
-			// Étape 6 : Tout est bon, générer un JWT avec telephone et role
-			// Récupérer le role depuis la connexion
-			$role = $connexionRow['role'] ?? 'user';
-
-			// Créer le payload du JWT
+			// Étape 3 : Génération du JWT
 			$payload = [
-				'uid'  => $uid,
-				'cid'  => $cid,
-				'tel'  => $telephone,
-				'role' => $role,
+				'uid'  => $user->getUid(),
+				'cid'  => $connexionRow['cid'],
+				'tel'  => $user->getTelephone(),
+				'role' => $user->getRole(),
 				'iat'  => time(),
-				'exp'  => time() + (24 * 3600) // Valable 24h
+				'exp'  => time() + 86400 // 24h
 			];
 
-			// Générer le JWT (utiliser OpenSSL avec la clé privée)
 			$jwt = $this->generateJwt($payload);
-
 			if (!$jwt) {
 				Errors::add("Erreur lors de la génération du JWT", ErrorLevel::ERROR);
 				return null;
 			}
 
-			// Hydrater la ConnexionCard avec le token
-			$card->setCid($cid);
-			$card->setUid($uid);
-			$card->setTelephone($connexionRow['telephone']);
+			// Hydratation de la ConnexionCard
+			$card->setCid($connexionRow['cid']);
 			$card->setToken($jwt);
 			$card->setTokenValidity(date('Y-m-d H:i:s', $payload['exp']));
 			$card->setLocked(false);
 
-			// Mettre à jour lastConnexion en BDD
+			// Mise à jour lastConnexion
 			$stmt = $this->Database->prepare("UPDATE user_connexion SET lastConnexion = NOW() WHERE cid = :cid");
-			$stmt->execute([':cid' => $cid]);
+			$stmt->execute([':cid' => $connexionRow['cid']]);
 
 			// Enregistrer l'essai réussi
 			$this->updateTry($card, ['type' => 'success', 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
 
 			return $card;
 		}
+
+
+		public function connectWithToken(string $token): ?ConnexionCard {
+			// 1. Décoder et valider le JWT
+			$payload = $this->decodeJwt($token);
+			if ($payload === null) {
+				Errors::add("Token invalide ou expiré", ErrorLevel::ERROR);
+				return null;
+			}
+
+			// Vérification des champs obligatoires
+			if (!isset($payload['uid'], $payload['cid'], $payload['exp'])) {
+				Errors::add("Token incomplet", ErrorLevel::ERROR);
+				return null;
+			}
+
+			// 2. Vérifier expiration
+			if ($payload['exp'] < time()) {
+				Errors::add("Token expiré", ErrorLevel::ERROR);
+				return null;
+			}
+
+			$uid = (int)$payload['uid'];
+			$cid = (int)$payload['cid'];
+
+			// 3. Récupérer la ligne user_connexion
+			$stmt = $this->Database->prepare("
+				SELECT cid, uid, telephone, lastConnexion, locked
+				FROM user_connexion
+				WHERE cid = :cid AND uid = :uid
+				LIMIT 1
+			");
+			$stmt->execute([':cid' => $cid, ':uid' => $uid]);
+			$row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+			if (!$row) {
+				Errors::add("Connexion introuvable", ErrorLevel::ERROR);
+				return null;
+			}
+
+			// 4. Vérifier si le compte est verrouillé
+			if (!empty($row['locked'])) {
+				Errors::add("Compte verrouillé", ErrorLevel::WARNING);
+				return null;
+			}
+
+			// 5. Récupérer l'utilisateur
+			$user = (new User($this->Database))->get($uid, null);
+			if ($user === null) {
+				Errors::add("Utilisateur introuvable", ErrorLevel::ERROR);
+				return null;
+			}
+
+			// 6. Hydrater la ConnexionCard
+			$card = new ConnexionCard();
+			$card->setCid($cid);
+			$card->setUid($uid);
+			$card->setTelephone($row['telephone']);
+			$card->setLocked(false);
+			$card->setToken($token);
+			$card->setTokenValidity(date('Y-m-d H:i:s', $payload['exp']));
+
+			// 7. Mettre à jour lastConnexion
+			$stmt = $this->Database->prepare("
+				UPDATE user_connexion SET lastConnexion = NOW() WHERE cid = :cid
+			");
+			$stmt->execute([':cid' => $cid]);
+
+			return $card;
+		}
+
 
 		/**
 		 * Génère un JWT signé avec la clé privée.
@@ -517,7 +559,6 @@
 				':tryHistory' => json_encode($history),
 				':cid'        => $cid
 			]);
-
 			return $updated ? true : false;
 		}
 
