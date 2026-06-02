@@ -1,6 +1,6 @@
 <?php
 	session_start();
-	$libs = ["config","errors","connexion"];
+	$libs = ["config","errors","connexion";
 	foreach($libs as $lib){
 		if(file_exists(__DIR__ . "/SOURCES/$lib.php")){
 			require_once(__DIR__ . "/SOURCES/$lib.php");
@@ -17,55 +17,27 @@
 			PDO::ATTR_EMULATE_PREPARES   => false
 		]
 	);
-	$connexion = new Connexion($database, $config->get("PUBLICKEYPATH"), $config->get("PRIVATEKEYPATH"));
+	$connexion = new Connexion($database, __DIR__ . $config->get("PRIVATEKEYPATH"), __DIR__ . $config->get("PUBLICKEYPATH"));
 	$connexion->checkDatabase();
-	if(
-		isset($_SESSION['try']) && 
-		(
-			(
-				isset($_SESSION['try']['COOKIE']) && 
-				$_SESSION['try']['COOKIE']>=2
-			) || 
-			(
-				isset($_SESSION['try']['SESSION']) && 
-				$_SESSION['try']['SESSION']>=3
-			) || 
-			(
-				isset($_SESSION['try']['POST']) && 
-				$_SESSION['try']['POST']>=5
-			) || 
-			(
-				isset($_SESSION['try']['COOKIE']) &&
-				isset($_SESSION['try']['SESSION']) && 
-				isset($_SESSION['try']['POST']) && 
-				$_SESSION['try']['COOKIE']+$_SESSION['try']['SESSION']+$_SESSION['try']['POST']>=5
-			)
-		)
-	){
-		$username = $_POST['username'] ?? $_SESSION['username'] ?? $_COOKIE['username'] ?? null;
-		$connexion->lock($username);
-		exit;
-	}
+	$authenticated = false;
 	if (isset($_POST['connexion'])) {
-		Errors::add("Connexion par post",ErrorLevel::LOG);
 		if (!empty($_POST['username']) && !empty($_POST['password'])) {
-			Errors::add("Vars OK",ErrorLevel::LOG);
-			if ($connexion->connect($_POST['username'], $_POST['password'])) {
-				Errors::add("Connexion OK",ErrorLevel::LOG);
+			$card = $connexion->connect($_POST['username'], $_POST['password']);
+			if ($card !== null) {
 				$_SESSION['auth'] = [
-					'token' => $connexion->getToken(),
-					'tokenValidity' => $connexion->getTokenValidity()->format('Y-m-d H:i:s')
+					'token' => $card->getToken(),
+					'tokenValidity' => $card->getTokenValidity()
 				];
-				if($_POST['remember']){
+				if (!empty($_POST['remember'])) {
 					$expire = time() + 60 * 60 * 24 * 30;
-					setcookie('auth[token]', $connexion->getToken(), [
+					setcookie('auth[token]', $card->getToken(), [
 						'expires'  => $expire,
 						'path'     => '/',
 						'secure'   => true,
 						'httponly' => true,
 						'samesite' => 'Strict'
 					]);
-					setcookie('auth[tokenValidity]', $connexion->getTokenValidity()->format('Y-m-d H:i:s'), [
+					setcookie('auth[tokenValidity]', $card->getTokenValidity(), [
 						'expires'  => $expire,
 						'path'     => '/',
 						'secure'   => true,
@@ -73,12 +45,8 @@
 						'samesite' => 'Strict'
 					]);
 				}
-				Errors::save("Vous êtes connecté", ErrorLevel::SUCCESS);
-				return;
-			}
-			else{
-				if(!isset($_SESSION['try']['POST'])){$_SESSION['try']['POST']=0;}
-				$_SESSION['try']['POST']++;
+				Errors::add("Vous êtes connecté", ErrorLevel::SUCCESS,true);
+				$authenticated = true;
 			}
 		}
 	}
@@ -87,8 +55,8 @@
 			$validity = new DateTimeImmutable($_SESSION['auth']['tokenValidity']);
 			if ($validity > new DateTimeImmutable()) {
 				if ($connexion->checkToken($_SESSION['auth']['token'])) {
-					Errors::save("Vous êtes connecté", ErrorLevel::SUCCESS);
-					return;
+					Errors::add("Vous êtes connecté", ErrorLevel::SUCCESS);
+					$authenticated = true;
 				}
 				else{
 					if(!isset($_SESSION['try']['SESSION'])){$_SESSION['try']['SESSION']=0;}
@@ -96,7 +64,9 @@
 					$_SESSION['auth']=null;
 				}
 			}
-			$_SESSION['auth']=null;
+			else {
+				$_SESSION['auth'] = null;
+			}
 		}
 		catch (Throwable $e) {
 			$_SESSION['auth']=null;
@@ -111,8 +81,8 @@
 						'token' => $_COOKIE['auth']['token'],
 						'tokenValidity' => $_COOKIE['auth']['tokenValidity']
 					];
-					Errors::save("Vous êtes connecté", ErrorLevel::SUCCESS);
-					return;
+					Errors::add("Vous êtes connecté", ErrorLevel::SUCCESS);
+					$authenticated = true;
 				}
 				else{
 					if(!isset($_SESSION['try']['COOKIE'])){$_SESSION['try']['COOKIE']=0;}
@@ -121,9 +91,17 @@
 					setcookie('auth[tokenValidity]', '', time() - 3600, '/');
 				}
 			}
+			else {
+				setcookie('auth[token]', '', time() - 3600, '/');
+				setcookie('auth[tokenValidity]', '', time() - 3600, '/');
+			}
 		} 
 		catch (Throwable $e) {
 		}
+	}
+	if($authenticated){
+		header("Location: dashboard.php");
+		exit();
 	}
 
 ?>
@@ -150,6 +128,7 @@
 					<h1 class="card-title">Connexion</h1>
 					<p class="card-subtitle">Connectez-vous à votre espace ROYJohanInfo</p>
 				</div>
+				<?php if (!$authenticated): ?>
 				<form method="post" autocomplete="on">
 					<div class="field">
 						<label for="username">Identifiant</label>
@@ -187,10 +166,15 @@
 						</div>
 					</div>
 					<button type="submit" name="connexion" class="btn-submit">Se connecter</button>
-					<div class="card-footer">
-						© <?= date('Y') ?> ROYJohanInfo
-					</div>
 				</form>
+				<?php else: ?>
+				<div class="card-body">
+					<p class="success-message">Vous êtes déjà connecté.</p>
+				</div>
+				<?php endif; ?>
+				<div class="card-footer">
+					© <?= date('Y') ?> ROYJohanInfo
+				</div>
 			</div>
 		</div>
 		<?= Errors::display(); ?>

@@ -1,44 +1,26 @@
 <?php
-	/**
-	 * Gestion des connexions utilisateurs.
-	 *
-	 * Ce fichier définit les classes de connexion et les règles
-	 * de validation des données de connexion.
-	 *
-	 * @package ROYJohanInfo
-	 */
 
 	require_once(__DIR__ . "/errors.php");
 	require_once(__DIR__ . "/user.php");
+	session_start();
 
-
-	/**
-	 * Représente une fiche de connexion pour un utilisateur.
-	 */
 	class ConnexionCard {
-		private ?int    $cid           = null;
-		private ?int    $uid           = null;
-		private ?string $telephone     = null;
-		private ?string $token         = null;
-		private ?string $tokenValidity = null;
-		private ?bool   $locked        = null;
-		private ?string $try           = null;
-		
-		/**
-		 * Constructeur.
-		 *
-		 * @param array $data Données initiales à hydrater
-		 */
-		public function __construct(array $data){
-			$this->hydrate($data);
+		private ?int     $cid           = null;
+		private ?int     $uid           = null;
+		private ?UserCard $user          = null;
+		private ?string  $telephone     = null;
+		private ?string  $token         = null;
+		private ?string  $tokenValidity = null;
+		private ?bool    $locked        = null;
+		private ?int     $try           = null;
+		private ?string  $hash		   = null;
+
+		public function __construct(array $data=null){
+			if($data!=null && !empty($data)) {	
+				$this->hydrate($data);
+			}
 		}
 
-		/**
-		 * Hydrate l'objet à partir d'un tableau associatif.
-		 *
-		 * @param array $data Données à affecter aux propriétés
-		 * @return void
-		 */
 		public function hydrate(array $data): void {
 			foreach ($data as $key => $value) {
 				$method = 'set' . str_replace(' ', '', ucwords(str_replace(['_', '-'], ' ', $key)));
@@ -53,14 +35,16 @@
 				}
 			}
 		}
-		
-		public function getCid(): ?int              { return $this->cid; }
-		public function getUid(): ?int              { return $this->uid; }
-		public function getTelephone(): ?string     { return $this->telephone; }
-		public function getToken(): ?string         { return $this->token; }
+
+		public function getCid(): ?int { return $this->cid; }
+		public function getUid(): ?int { return $this->uid; }
+		public function getUser(): ?UserCard { return $this->user; }
+		public function getTelephone(): ?string { return $this->telephone; }
+		public function getToken(): ?string { return $this->token; }
 		public function getTokenValidity(): ?string { return $this->tokenValidity; }
-		public function getLocked(): ?bool          { return $this->locked;}
-		public function getTry(): ?string           { return $this->try;}
+		public function getLocked(): ?bool { return $this->locked;}
+		public function getTry(): ?int { return $this->try;}
+		public function getHash(): ?string { return $this->hash; }
 	
 		public function setCid($v): bool {
 			if ($v === null) { 
@@ -88,12 +72,20 @@
 			return true;
 		}
 
-		/**
-		 * Définit le numéro de téléphone.
-		 *
-		 * @param mixed $v Numéro de téléphone en clair
-		 * @return bool True si le numéro est valide et assigné
-		 */
+		public function setUser(UserCard $v): bool {
+			if ($v === null) {
+				$this->user = null;
+				return true;
+			}
+			if (!($v instanceof UserCard)) {
+				Errors::add("Format user invalide (UserCard attendu) : " . print_r($v, true), ErrorLevel::ERROR);
+				return false;
+			}
+			$this->user = $v;
+			$this->uid = $v->getUid();
+			return true;
+		}
+
 		public function setTelephone($v): bool {
 			if ($v === null) {
 				$this->telephone = null;
@@ -112,17 +104,6 @@
 			return true;
 		}
 
-		/**
-		 * Définit le token JWT brut.
-		 *
-		 * Accepte uniquement :
-		 * - null  : efface le token
-		 * - string : chaîne JWT (format header.payload.signature)
-		 *	* La validité (date) est gérée séparément via `setTokenValidity()`.
-		 *
-		 * @param mixed $v JWT string ou null
-		 * @return bool
-		 */
 		public function setToken($v): bool {
 			if ($v === null) {
 				$this->token = null;
@@ -144,15 +125,6 @@
 			return true;
 		}
 		
-		/**
-		 * Définit la date de validité du token.
-		 *
-		 * Accepte : null, timestamp (int), chaîne de date lisible, ou DateTimeInterface.
-		 * Stocke la date au format 'Y-m-d H:i:s'.
-		 *
-		 * @param mixed $v
-		 * @return bool
-		 */
 		public function setTokenValidity($v): bool {
 			if ($v === null) {
 				$this->tokenValidity = null;
@@ -179,25 +151,11 @@
 			return false;
 		}		 
 
-		/**
-		 * Définit l'état de verrouillage.
-		 *
-		 * @param bool $v True pour verrouiller, false pour déverrouiller
-		 * @return bool L'état verrouillé actuel
-		 */
 		public function setLocked(bool $v): bool {
 			$this->locked = $v;
 			return $this->locked;
 		}
 
-		/**
-		 * Définit l'historique des essais infructueux.
-		 *
-		 * Accepte une chaîne JSON ou un tableau, ou null pour effacer.
-		 *
-		 * @param mixed $v Chaîne JSON, tableau, ou null
-		 * @return bool
-		 */
 		public function setTry($v): bool {
 			if ($v === null) {
 				$this->try = null;
@@ -207,7 +165,7 @@
 			if (is_string($v)) {
 				$decoded = json_decode($v, true);
 				if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-					$this->try = $v; // Stocker le JSON brut
+					$this->try = sizeof($decoded); // Stocker le nombre de tentatives
 					return true;
 				}
 				Errors::add("try JSON invalide : " . print_r($v, true), ErrorLevel::ERROR);
@@ -220,206 +178,309 @@
 					Errors::add("try tableau non convertible en JSON : " . print_r($v, true), ErrorLevel::ERROR);
 					return false;
 				}
-				$this->try = $json;
+				$this->try = sizeof(json_decode($json, true)) ;
+				return true;
+			}
+			if(is_numeric($v)){
+				$this->try = (int)$v;
 				return true;
 			}
 
 			Errors::add("Format try invalide : " . print_r($v, true), ErrorLevel::ERROR);
 			return false;
 		}
+
+		public function setHash($v): bool {
+			if ($v === null) {
+				$this->hash = null;
+				return true;
+			}
+			if (!is_string($v)) {
+				Errors::add("Format hash invalide (string attendu) : " . print_r($v, true), ErrorLevel::ERROR);
+				return false;
+			}
+			$this->hash = password_hash($v, PASSWORD_DEFAULT);
+			return true;
+		}
 	
 	}
 
 
-	/**
-	 * Classe de gestion des connexions.
-	 *
-	 * Cette classe pourra être étendue pour stocker les règles de
-	 * gestion des sessions et des tokens de connexion.
-	 */
 	class Connexion {
-		/**
-		 * @param PDO $Database Connexion PDO à la base de données
-		 * @param string $PrivateKeyPath Chemin vers la clé privée (PEM)
-		 * @param string $PublicKeyPath  Chemin vers la clé publiqu	e (PEM)
-		 */
+
 		public function __construct(private PDO $Database, private string $PrivateKeyPath, private string $PublicKeyPath){
-			// Vérification de la présence et de la lisibilité des fichiers de clés
 			if (!file_exists($this->PrivateKeyPath) || !is_readable($this->PrivateKeyPath)) {
 				Errors::add("Clé privée introuvable ou non lisible : " . $this->PrivateKeyPath, ErrorLevel::ERROR);
-				throw new \InvalidArgumentException('Private key file not found or not readable');
 			}
 
 			if (!file_exists($this->PublicKeyPath) || !is_readable($this->PublicKeyPath)) {
 				Errors::add("Clé publique introuvable ou non lisible : " . $this->PublicKeyPath, ErrorLevel::ERROR);
 				throw new \InvalidArgumentException('Public key file not found or not readable');
 			}
+			$this->checkDatabase();
 		}
 
-		public function connect(string $telephone, string $password): ?ConnexionCard {
+		public function get(string $telOrToken, string $password = null): ?ConnexionCard{
+			if($password==null){
+				if($this->isLocked()){
+					Errors::add("Trop de tentatives échouées, veuillez réessayer plus tard", ErrorLevel::WARNING);
+					return null;
+				}
+				$payload = $this->decodeJwt($telOrToken);
+				if ($payload === null) {
+					Errors::add("Token invalide ou expiré", ErrorLevel::ERROR);
+					$this->updateTry(new ConnexionCard([]), ['type' => 'TOKEN', 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
+					return null;
+				}
+				if (!isset($payload['uid'], $payload['cid'], $payload['exp'])) {
+					Errors::add("Token incomplet", ErrorLevel::ERROR);
+					return null;
+				}
+				if ($payload['exp'] < time()) {
+					Errors::add("Token expiré", ErrorLevel::ERROR);
+					$this->updateTry(new ConnexionCard([]), ['type' => 'TOKEN', 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
+					return null;
+				}
+				$uid = (int)$payload['uid'];
+				$cid = (int)$payload['cid'];
+				$stmt = $this->Database->prepare("
+					SELECT cid, uid, telephone, lastConnexion, locked
+					FROM user_connexion
+					WHERE cid = :cid AND uid = :uid
+					LIMIT 1
+				");
+				$stmt->execute([':cid' => $cid, ':uid' => $uid]);
+				$row = $stmt->fetch(PDO::FETCH_ASSOC);
+				if (!$row) {
+					Errors::add("Connexion introuvable", ErrorLevel::ERROR);
+					$this->updateTry(new ConnexionCard([]), ['type' => 'TOKEN', 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
+					return null;
+				}
+				if($this->isLocked($row['telephone'] ?? null)){
+					Errors::add("Trop de tentatives échouées, veuillez réessayer plus tard", ErrorLevel::WARNING);
+					return null;
+				}
+				$user = (new User($this->Database))->get($uid, null);
+				
+				$card = new ConnexionCard([]);
+				$card->setCid($cid);
+				$card->setUid($uid);
+				$card->setUser($user);
+				$card->setTelephone($row['telephone']);
+				$card->setLocked(false);
+				$card->setToken($telOrToken);
+				$card->setTokenValidity(date('Y-m-d H:i:s', $payload['exp']));
+				if ($user === null) {
+					Errors::add("Utilisateur introuvable", ErrorLevel::ERROR);
+					$this->updateTry($card, ['type' => 'TOKEN', 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
+					return null;
+				}
+				return $card;
+			}
+			else{
+				$normalizedTelephone = $this->normalizeFrenchTelephone($telOrToken);
+				if($this->isLocked($normalizedTelephone ?? null)){
+					Errors::add("Trop de tentatives échouées, veuillez réessayer plus tard", ErrorLevel::WARNING);
+					return null;
+				}
+				if ($normalizedTelephone === null) {
+					Errors::add("Téléphone invalide, attendu un numéro français", ErrorLevel::ERROR);
+					return null;
+				}
+				$card = new ConnexionCard([]);
+				$card->setTelephone($normalizedTelephone);
 
-			// Normalisation du téléphone
-			$telephone = str_replace(['.', ' ', '-'], '', $telephone);
+				$stmt = $this->Database->prepare("SELECT cid, uid, telephone, hash FROM user_connexion WHERE telephone = :telephone LIMIT 1");
+				$stmt->execute([':telephone' => $normalizedTelephone]);
+				$connexionRow = $stmt->fetch(PDO::FETCH_ASSOC);
+				if (!$connexionRow) {
+					Errors::add("Connexion introuvable", ErrorLevel::ERROR);
+					$this->updateTry($card, ['type' => 'PASS', 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
+					return null;
+				}
+		  		$card->setUid((int) $connexionRow['uid']);
+				$card->setUser((new User($this->Database))->get((int) $connexionRow['uid'], null));
+				$connexionTelephone = str_replace(['.', ' ', '-'], '', $connexionRow['telephone']);
+				if (!password_verify($password, $connexionRow['hash'])) {
+					$this->updateTry($card, ['type' => 'PASS', 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
+					Errors::add("Mot de passe incorrect", ErrorLevel::ERROR);
+					return null;
+				}
+				$payload = [
+					'uid'  => (int) $connexionRow['uid'],
+					'cid'  => $connexionRow['cid'],
+					'tel'  => $connexionTelephone,
+					'iat'  => time(),
+					'exp'  => time() + 86400 // 24h
+				];
+				$jwt = $this->generateJwt($payload);
+				if (!$jwt) {
+					Errors::add("Erreur lors de la génération du JWT", ErrorLevel::ERROR);
+					return null;
+				}
+				$card->setCid($connexionRow['cid']);
+				$card->setToken($jwt);
+				$card->setTokenValidity(date('Y-m-d H:i:s', $payload['exp']));
+				$card->setLocked(false);
+				$stmt = $this->Database->prepare("UPDATE user_connexion SET lastConnexion = NOW(), token=:token, tokenValidity=:tokenValidity WHERE cid = :cid");
+				$stmt->execute([':cid' => $connexionRow['cid'],':token' => $jwt, ':tokenValidity' => date('Y-m-d H:i:s', $payload['exp'])]);
+				return $card;
+			}
+		}
 
-			// Étape 1 : Récupérer l'utilisateur
-			$user = (new User($this->Database))->get(null, $telephone);
-			if ($user === null) {
-				Errors::add("Utilisateur introuvable pour le téléphone : " . $telephone, ErrorLevel::ERROR);
+		public function save(ConnexionCard $cible, UserCard $modificateur): ?int {
+			if ($modificateur->getUid() === null) {
+				Errors::add("Authentification requise", ErrorLevel::ERROR);
+				return 0;
+			}
+			$isAdmin = (
+				$modificateur->hasRole(Role::ADMINISTRATEUR) ||
+				$modificateur->hasRole(Role::TECHNICIEN) ||
+				$modificateur->hasRole(Role::COMMERCIAL)
+			);
+			$isCreation = ($cible->getCid() === null);
+			if ($isCreation && !$isAdmin) {
+				Errors::add("Droits insuffisants pour créer un utilisateur", ErrorLevel::ERROR);
+				return 0;
+			}
+			if (!$isCreation && $modificateur->getUid() !== $cible->getUid() && !$isAdmin) {
+				Errors::add("Droits insuffisants pour modifier cet utilisateur", ErrorLevel::ERROR);
+				return 0;
+			}
+			try {
+				if ($isCreation) {
+
+					$stmt = $this->Database->prepare("
+						INSERT INTO user_connexion 
+						(uid, token, tokenValidity, locked, tryHistory, hash, telephone)
+						VALUES 
+						(:uid, :token, :tokenValidity, :locked, :tryHistory, :hash, :telephone)
+					");
+
+					$stmt->execute([
+						':uid'        => $cible->getUid(),
+						':token'      => $cible->getToken(),
+						':tokenValidity' => $cible->getTokenValidity(),
+						':locked'     => $cible->getLocked(),
+						':tryHistory' => "",
+						':hash'        => $cible->getHash(),
+						':telephone'   => $cible->getTelephone()
+					]);
+
+					$cid = (int)$this->Database->lastInsertId();
+					$cible->setCid($cid);
+					return $cid;
+				}
+				$setParts = [
+					"uid = :uid",
+					"token = :token",
+					"tokenValidity = :tokenValidity",
+					"locked = :locked"
+				];
+				$params = [
+					':uid' => $cible->getUid(),
+					':token' => $cible->getToken(),
+					':tokenValidity' => $cible->getTokenValidity(),
+					':locked' => $cible->getLocked(),
+					':cid' => $cible->getCid()
+				];
+
+				if ($cible->getHash() !== null) {
+					$setParts[] = "hash = :hash";
+					$params[':hash'] = $cible->getHash();
+				}
+				$sql = "UPDATE user_connexion SET " . implode(",\n\t\t\t\t", $setParts) . " WHERE cid = :cid";
+				$stmt = $this->Database->prepare($sql);
+				$stmt->execute($params);
+				return $cible->getCid();
+			}
+			catch (PDOException $e) {
+				Errors::add("Erreur SQL : " . $e->getMessage(), ErrorLevel::ERROR);
+				return 0;
+			}
+
+		}
+
+		private function normalizeFrenchTelephone(string $telephone): ?string {
+			$clean = preg_replace('/\D+/', '', $telephone);
+
+			if (str_starts_with($clean, '0033')) {
+				$clean = '0' . substr($clean, 4);
+			} elseif (str_starts_with($clean, '33')) {
+				$clean = '0' . substr($clean, 2);
+			}
+
+			if (!preg_match('/^0[1-9]\d{8}$/', $clean)) {
 				return null;
 			}
 
-			// Préparer la ConnexionCard
-			$card = new ConnexionCard();
-			$card->setUid($user->getUid());
-			$card->setTelephone($telephone);
+			return $clean;
+		}
 
-			// Vérifier si le compte est verrouillé
-			if ($user->getLocked()) {
-				$this->updateTry($card, ['type' => 'locked', 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
-				Errors::add("Compte utilisateur verrouillé.", ErrorLevel::WARNING);
-				return null;
+		public function checkDatabase(): bool {
+			$table = 'user_connexion';
+
+			$stmt = $this->Database->query("SHOW TABLES LIKE '$table'");
+			if ($stmt === false) {
+				Errors::add("Impossible d'exécuter SHOW TABLES", ErrorLevel::ERROR);
+				return false;
 			}
 
-			// Étape 2 : Récupérer la ligne user_connexion
-			$stmt = $this->Database->prepare("
-				SELECT cid, uid, telephone, password
-				FROM user_connexion
-				WHERE uid = :uid
-				LIMIT 1
-			");
-			$stmt->execute([':uid' => $user->getUid()]);
-			$connexionRow = $stmt->fetch(PDO::FETCH_ASSOC);
-
-			if (!$connexionRow) {
-				$this->updateTry($card, ['type' => 'failed', 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
-				Errors::add("Connexion introuvable", ErrorLevel::ERROR);
-				return null;
+			if ($stmt->rowCount() === 0) {
+				Errors::add("La table '$table' est absente", ErrorLevel::WARNING);
+				return $this->createDatabase();
 			}
 
-			// Vérifier correspondance téléphone
-			$connexionTelephone = str_replace(['.', ' ', '-'], '', $connexionRow['telephone']);
-			if ($connexionTelephone !== $telephone) {
-				$this->updateTry($card, ['type' => 'failed', 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
-				Errors::add("Téléphone ne correspond pas", ErrorLevel::ERROR);
-				return null;
-			}
-
-			// Vérifier mot de passe
-			if (!password_verify($password, $connexionRow['password'])) {
-				$this->updateTry($card, ['type' => 'failed', 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
-				Errors::add("Mot de passe incorrect", ErrorLevel::ERROR);
-				return null;
-			}
-
-			// Étape 3 : Génération du JWT
-			$payload = [
-				'uid'  => $user->getUid(),
-				'cid'  => $connexionRow['cid'],
-				'tel'  => $user->getTelephone(),
-				'role' => $user->getRole(),
-				'iat'  => time(),
-				'exp'  => time() + 86400 // 24h
+			$expectedColumns = [
+				'cid', 'uid', 'telephone', 'hash', 'token',
+				'tokenValidity', 'tryHistory', 'lastConnexion', 'locked'
 			];
 
-			$jwt = $this->generateJwt($payload);
-			if (!$jwt) {
-				Errors::add("Erreur lors de la génération du JWT", ErrorLevel::ERROR);
-				return null;
+			$columns = $this->Database
+				->query("SHOW COLUMNS FROM $table")
+				->fetchAll(PDO::FETCH_COLUMN);
+
+			foreach ($expectedColumns as $col) {
+				if (!in_array($col, $columns, true)) {
+					Errors::add("Colonne manquante : $col", ErrorLevel::WARNING);
+					return $this->createDatabase();
+				}
 			}
-
-			// Hydratation de la ConnexionCard
-			$card->setCid($connexionRow['cid']);
-			$card->setToken($jwt);
-			$card->setTokenValidity(date('Y-m-d H:i:s', $payload['exp']));
-			$card->setLocked(false);
-
-			// Mise à jour lastConnexion
-			$stmt = $this->Database->prepare("UPDATE user_connexion SET lastConnexion = NOW() WHERE cid = :cid");
-			$stmt->execute([':cid' => $connexionRow['cid']]);
-
-			// Enregistrer l'essai réussi
-			$this->updateTry($card, ['type' => 'success', 'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown']);
-
-			return $card;
+			return true;
 		}
 
+		private function createDatabase(bool $forceDrop = true): bool {
+			$table = 'user_connexion';
 
-		public function connectWithToken(string $token): ?ConnexionCard {
-			// 1. Décoder et valider le JWT
-			$payload = $this->decodeJwt($token);
-			if ($payload === null) {
-				Errors::add("Token invalide ou expiré", ErrorLevel::ERROR);
-				return null;
+			if ($forceDrop) {
+				$this->Database->exec("DROP TABLE IF EXISTS $table");
 			}
 
-			// Vérification des champs obligatoires
-			if (!isset($payload['uid'], $payload['cid'], $payload['exp'])) {
-				Errors::add("Token incomplet", ErrorLevel::ERROR);
-				return null;
+			$sql = "
+				CREATE TABLE IF NOT EXISTS $table (
+					cid INT PRIMARY KEY AUTO_INCREMENT,
+					uid INT NOT NULL,
+					telephone VARCHAR(20),
+					hash VARCHAR(255),
+					token VARCHAR(512) NULL,
+					tokenValidity DATETIME NULL,
+					tryHistory LONGTEXT NULL,
+					lastConnexion DATETIME NULL,
+					locked TINYINT(1) NOT NULL DEFAULT 0,
+					lockedDate DATETIME NULL
+				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+			";
+
+			try {
+				$this->Database->exec($sql);
+				return true;
 			}
-
-			// 2. Vérifier expiration
-			if ($payload['exp'] < time()) {
-				Errors::add("Token expiré", ErrorLevel::ERROR);
-				return null;
+			catch (PDOException $e) {
+				Errors::add("Erreur création base : " . $e->getMessage(), ErrorLevel::ERROR);
+				return false;
 			}
-
-			$uid = (int)$payload['uid'];
-			$cid = (int)$payload['cid'];
-
-			// 3. Récupérer la ligne user_connexion
-			$stmt = $this->Database->prepare("
-				SELECT cid, uid, telephone, lastConnexion, locked
-				FROM user_connexion
-				WHERE cid = :cid AND uid = :uid
-				LIMIT 1
-			");
-			$stmt->execute([':cid' => $cid, ':uid' => $uid]);
-			$row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-			if (!$row) {
-				Errors::add("Connexion introuvable", ErrorLevel::ERROR);
-				return null;
-			}
-
-			// 4. Vérifier si le compte est verrouillé
-			if (!empty($row['locked'])) {
-				Errors::add("Compte verrouillé", ErrorLevel::WARNING);
-				return null;
-			}
-
-			// 5. Récupérer l'utilisateur
-			$user = (new User($this->Database))->get($uid, null);
-			if ($user === null) {
-				Errors::add("Utilisateur introuvable", ErrorLevel::ERROR);
-				return null;
-			}
-
-			// 6. Hydrater la ConnexionCard
-			$card = new ConnexionCard();
-			$card->setCid($cid);
-			$card->setUid($uid);
-			$card->setTelephone($row['telephone']);
-			$card->setLocked(false);
-			$card->setToken($token);
-			$card->setTokenValidity(date('Y-m-d H:i:s', $payload['exp']));
-
-			// 7. Mettre à jour lastConnexion
-			$stmt = $this->Database->prepare("
-				UPDATE user_connexion SET lastConnexion = NOW() WHERE cid = :cid
-			");
-			$stmt->execute([':cid' => $cid]);
-
-			return $card;
 		}
 
-
-		/**
-		 * Génère un JWT signé avec la clé privée.
-		 *
-		 * @param array $payload Données à encoder dans le JWT
-		 * @return string|false JWT signé ou false en cas d'erreur
-		 */
 		private function generateJwt(array $payload): string|false {
 			// Header JWT standard
 			$header = [
@@ -449,86 +510,109 @@
 			return $signatureInput . '.' . $signatureEncoded;
 		}
 
-		/**
-		 * Met à jour l'historique des essais infructueux et vérifie le verrouillage.
-		 *
-		 * Si $newTry est false :
-		 * - Lit le tryHistory de la BDD via le cid de la ConnexionCard
-		 * - Compte les tentatives des 24 dernières heures
-		 * - Si > 5, marque le compte comme verrouillé (locked = true)
-		 * - Met à jour la ConnexionCard et la retourne
-		 *
-		 * Si $newTry est un tableau (ou string avec détails) :
-		 * - Ajoute une nouvelle tentative au début du tryHistory
-		 * - Garde max 10 entrées (supprime la plus ancienne)
-		 * - Met à jour la BDD
-		 * - Retourne true en cas de succès
-		 *
-		 * @param ConnexionCard $card Objet ConnexionCard contenant le cid
-		 * @param mixed $newTry false pour lire, ou array ['type' => ..., 'ip' => ...] pour ajouter
-		 * @return ConnexionCard|bool Objet ConnexionCard hydraté si lecture, true si ajout réussi, false si erreur
-		 */
-		private function updateTry(ConnexionCard $card, $newTry = false) {
-			$cid = $card->getCid();
-
-			if (!$cid) {
-				Errors::add("ConnexionCard doit avoir un cid défini", ErrorLevel::ERROR);
-				return false;
+		private function decodeJwt(string $token): ?array {
+			$parts = explode('.', $token);
+			if (count($parts) !== 3) {
+				Errors::add("Format de token invalide", ErrorLevel::WARNING);
+				return null;
 			}
 
-			// Cas 1 : Lire l'historique et vérifier le verrouillage
-			if ($newTry === false) {
-				$stmt = $this->Database->prepare("SELECT tryHistory FROM connexion WHERE cid = :cid LIMIT 1");
-				$stmt->execute([':cid' => $cid]);
-				$row = $stmt->fetch(PDO::FETCH_ASSOC);
+			[$header64, $payload64, $signature64] = $parts;
+			$signature = base64_decode(str_replace(['-', '_'], ['+', '/'], $signature64));
+			if ($signature === false) {
+				Errors::add("Signature JWT invalide", ErrorLevel::WARNING);
+				return null;
+			}
 
-				if (!$row) {
-					Errors::add("Connexion cid=$cid introuvable", ErrorLevel::ERROR);
-					return false;
+			$dataToVerify = $header64 . '.' . $payload64;
+			$publicKey = file_get_contents($this->PublicKeyPath);
+			if ($publicKey === false) {
+				Errors::add("Impossible de lire la clé publique", ErrorLevel::ERROR);
+				return null;
+			}
+
+			$verified = openssl_verify($dataToVerify, $signature, $publicKey, OPENSSL_ALGO_SHA256);
+			if ($verified !== 1) {
+				Errors::add("Signature JWT invalide", ErrorLevel::WARNING);
+				return null;
+			}
+
+			$payloadJson = base64_decode(str_replace(['-', '_'], ['+', '/'], $payload64));
+			if ($payloadJson === false) {
+				Errors::add("Payload JWT invalide", ErrorLevel::WARNING);
+				return null;
+			}
+
+			$payload = json_decode($payloadJson, true);
+			if (!is_array($payload)) {
+				Errors::add("Payload JWT non décodable", ErrorLevel::WARNING);
+				return null;
+			}
+
+			if (isset($payload['exp']) && (int)$payload['exp'] < time()) {
+				Errors::add("Token expiré", ErrorLevel::WARNING);
+				return null;
+			}
+
+			return $payload;
+		}
+
+		private function isLocked($telephone):bool {
+			if(isset($_SESSION['try']) && $_SESSION['try']>=4){
+				return true;
+			}
+			if($telephone === null){
+				return false;
+			}
+			$stmt = $this->Database->prepare("SELECT tryHistory FROM user_connexion WHERE telephone = :telephone LIMIT 1");
+			$stmt->execute([':telephone' => $telephone]);
+			$row = $stmt->fetch(PDO::FETCH_ASSOC);
+			if(!$row) {
+				Errors::add("Connexion introuvable pour le téléphone : $telephone", ErrorLevel::ERROR);
+				return false;
+			}
+			if (!empty($row['locked'])) {
+				$lockedDate = !empty($row['lockedDate']) ? strtotime($row['lockedDate']) : 0;
+				if ($lockedDate > time()) {
+					return true;
 				}
-
-				$history = [];
-				if ($row['tryHistory']) {
-					$history = json_decode($row['tryHistory'], true) ?? [];
-				}
-
-				// Compter les tentatives des 24 dernières heures
+			}
+			if($row['tryHistory']) {
+				$history = json_decode($row['tryHistory'], true) ?? [];
 				$now = new \DateTime();
 				$ago24h = (new \DateTime())->modify('-24 hours');
 				$countLast24h = 0;
 
 				foreach ($history as $attempt) {
 					if (!isset($attempt['date'], $attempt['time'])) continue;
-					
 					try {
 						$attemptTime = \DateTime::createFromFormat('Y-m-d H:i:s', $attempt['date'] . ' ' . $attempt['time']);
-						if ($attemptTime && $attemptTime >= $ago24h) {
+						if ($attemptTime && $attemptTime >= $ago24h && $attempt['type'] === 'failed') {
 							$countLast24h++;
 						}
 					} catch (\Exception $e) {
-						// Format invalide, ignorer
 						continue;
 					}
 				}
-
-				// Hydrater la ConnexionCard avec l'historique
-				$card->setTry(json_encode($history));
-
-				// Si > 5 tentatives en 24h, marquer comme verrouillé
 				if ($countLast24h > 5) {
-					$card->setLocked(true);
-					$stmt = $this->Database->prepare("UPDATE connexion SET locked = 1 WHERE cid = :cid");
-					$stmt->execute([':cid' => $cid]);
+					return true;
 				}
-
-				return $card;
 			}
+			return false;
+		}
 
-			// Cas 2 : Ajouter une nouvelle tentative
-			$stmt = $this->Database->prepare("SELECT tryHistory FROM connexion WHERE cid = :cid LIMIT 1");
+		private function updateTry(ConnexionCard $card, $newTry = false) {
+			$cid = $card->getCid();
+			if (!$cid) {
+				if(!isset($_SESSION['try'])){
+					$_SESSION['try'] = 0;
+				}
+				$_SESSION['try']++;
+				return false;
+			}
+			$stmt = $this->Database->prepare("SELECT tryHistory FROM user_connexion WHERE cid = :cid LIMIT 1");
 			$stmt->execute([':cid' => $cid]);
 			$row = $stmt->fetch(PDO::FETCH_ASSOC);
-
 			if (!$row) {
 				Errors::add("Connexion cid=$cid introuvable", ErrorLevel::ERROR);
 				return false;
@@ -538,27 +622,23 @@
 			if ($row['tryHistory']) {
 				$history = json_decode($row['tryHistory'], true) ?? [];
 			}
-
-			// Créer la nouvelle tentative
 			$newAttempt = [
 				'date'  => date('Y-m-d'),
 				'time'  => date('H:i:s'),
 				'type'  => $newTry['type'] ?? 'unknown',
 				'ip'    => $newTry['ip'] ?? ($_SERVER['REMOTE_ADDR'] ?? 'unknown')
 			];
-
-			// Ajouter au début (plus récent en premier)
 			array_unshift($history, $newAttempt);
-
-			// Garder max 10 entrées
 			$history = array_slice($history, 0, 10);
-
-			// Sauvegarder en BDD
-			$stmt = $this->Database->prepare("UPDATE connexion SET tryHistory = :tryHistory WHERE cid = :cid");
+			$stmt = $this->Database->prepare("UPDATE user_connexion SET tryHistory = :tryHistory WHERE cid = :cid");
 			$updated = $stmt->execute([
 				':tryHistory' => json_encode($history),
 				':cid'        => $cid
 			]);
+			if(!isset($_SESSION['try'])){
+				$_SESSION['try'] = 0;
+			}
+			$_SESSION['try']++;
 			return $updated ? true : false;
 		}
 
