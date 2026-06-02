@@ -1,4 +1,5 @@
 <?php
+    session_start();
 	$libs = ["config","errors","connexion"];
 	foreach($libs as $lib){
 		if(file_exists(__DIR__ . "/$lib.php")){
@@ -60,14 +61,14 @@
                 Errors::add("Code administrateur incorrect", ErrorLevel::ERROR);
             }
         }
-        public function connect($telOrToken, $password=null, $memorize=false): void {
+        public function connect($telOrToken, $password=null, $memorize=false): bool {
             $card = $this->connexion->get($telOrToken, $password);
             if ($card !== null) {
                 $_SESSION['auth'] = [
                     'token' => $card->getToken(),
                     'tokenValidity' => $card->getTokenValidity()
                 ];
-                if($memeorize){
+                if($memorize){
                     $expire = time() + 60 * 60 * 24 * 30;
                     setcookie('auth[token]', $card->getToken(), [
                         'expires'  => $expire,
@@ -84,11 +85,10 @@
                         'samesite' => 'Strict'
                     ]);
                 }
-                Errors::add("Vous êtes connecté", ErrorLevel::SUCCESS);
+                Errors::add("Vous êtes connecté Mr. " . $card->getUser()->getPrenom(), ErrorLevel::SUCCESS);
+                return true;
             }
-            else{
-                Errors::add("Identifiants incorrects", ErrorLevel::ERROR);
-            }
+            return false;
         }
     }      
 ?>

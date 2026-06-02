@@ -2,7 +2,6 @@
 
 	require_once(__DIR__ . "/errors.php");
 	require_once(__DIR__ . "/user.php");
-	session_start();
 
 	class ConnexionCard {
 		private ?int     $cid           = null;
@@ -260,8 +259,8 @@
 					Errors::add("Trop de tentatives échouées, veuillez réessayer plus tard", ErrorLevel::WARNING);
 					return null;
 				}
-				if($row['token']===$telOrToken){
-					Errors::add("Le token ne correspond pas à l'utilisateur", ErrorLevel::WARNING);
+				if($row['token']!=$telOrToken){
+					Errors::add("Le token ne correspond pas à lutilisateur : ".$row['token']."/".$telOrToken, ErrorLevel::WARNING);
 					return null;
 				}
 				$user = (new User($this->Database))->get($uid, null);
@@ -328,6 +327,7 @@
 				$card->setLocked(false);
 				$stmt = $this->Database->prepare("UPDATE user_connexion SET lastConnexion = NOW(), token=:token, tokenValidity=:tokenValidity WHERE cid = :cid");
 				$stmt->execute([':cid' => $connexionRow['cid'],':token' => $jwt, ':tokenValidity' => date('Y-m-d H:i:s', $payload['exp'])]);
+				$_SESSION['try']=0;
 				return $card;
 			}
 		}
@@ -561,7 +561,7 @@
 			return $payload;
 		}
 
-		private function isLocked($telephone):bool {
+		private function isLocked($telephone=null):bool {
 			if(isset($_SESSION['try']) && $_SESSION['try']>=4){
 				return true;
 			}

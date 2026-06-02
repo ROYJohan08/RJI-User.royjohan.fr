@@ -1,9 +1,15 @@
 <?php
 	require_once(__DIR__ . "/SOURCES/controller.php");
 	$Controll = new Controller();
-	if (isset($_POST['connexion'])) {
+	if(isset($_GET['deco'])){
+		$_SESSION['auth']=null;
+		setcookie('auth[token]', '', time() - 3600, '/');
+		setcookie('auth[tokenValidity]', '', time() - 3600, '/');
+	}
+	elseif (isset($_POST['connexion'])) {
 		if (!empty($_POST['username']) && !empty($_POST['password'])) {
-			if($Controll->connect($_COOKIE['username'] ?? $_POST['username'], $_POST['password'], isset($_POST['remember']))){
+			$rem = isset($_POST['remember']) && $_POST['remember'] === 'on';
+			if($Controll->connect($_POST['username'], $_POST['password'], $rem)){
 				Errors::add("Connexion réussie", ErrorLevel::SUCCESS);
 				header("Location: dashboard.php");
 				exit();
@@ -14,24 +20,29 @@
 		}
 	}
 	elseif (isset($_SESSION['auth']['token'], $_SESSION['auth']['tokenValidity'])) {
+		Errors::add("Connexion par token", ErrorLevel::LOG);
 		try {
 			$validity = new DateTimeImmutable($_SESSION['auth']['tokenValidity']);
 			if ($validity > new DateTimeImmutable()) {
-				if($Controll->connnect($_SESSION['auth']['token'])) {
+				if($Controll->connect($_SESSION['auth']['token'])) {
 					Errors::add("Connexion réussie", ErrorLevel::SUCCESS);
 					header("Location: dashboard.php");
 					exit();
 				}
+				else{
+					Errors::add("Token incorrect", ErrorLevel::ERROR);
+				}
 			}
 			else {
-				$_SESSION['auth'] = null;
+				Errors::add("Token incorrect", ErrorLevel::ERROR);
 			}
 		}
 		catch (Throwable $e) {
-			$_SESSION['auth']=null;
+			Errors::add("Connexion par token echoué : " . $e->getMessage(), ErrorLevel::LOG);
 		}
 	}
 	elseif (isset($_COOKIE['auth']['token'], $_COOKIE['auth']['tokenValidity'])) {
+			Errors::add("Connexion par cookie", ErrorLevel::LOG);
 		try {
 			$validity = new DateTimeImmutable($_COOKIE['auth']['tokenValidity']);
 			if ($validity > new DateTimeImmutable()) {
@@ -42,14 +53,15 @@
 				}
 			}
 			else {
+				Errors::add("Token expiré", ErrorLevel::ERROR);
 				setcookie('auth[token]', '', time() - 3600, '/');
 				setcookie('auth[tokenValidity]', '', time() - 3600, '/');
 			}
 		} 
 		catch (Throwable $e) {
+			Errors::add("Token de connexion invalide : " . $e->getMessage(), ErrorLevel::ERROR);
 		}
 	}
-
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -114,6 +126,12 @@
 				</form>
 				<div class="card-footer">
 					© <?= date('Y') ?> ROYJohanInfo
+					<?php echo "<br/>"; ?>
+					<?php print_r($_SESSION); ?>
+		<?php echo "<br/>"; ?>
+		<?php print_r($_COOKIE); ?>
+		<?php echo "<br/>"; ?>
+		<?php print_r($_POST); ?>
 				</div>
 			</div>
 		</div>
