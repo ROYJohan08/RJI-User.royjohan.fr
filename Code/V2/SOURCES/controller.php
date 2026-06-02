@@ -60,10 +60,35 @@
                 Errors::add("Code administrateur incorrect", ErrorLevel::ERROR);
             }
         }
-    }
-
-
-
-    $C = new Controller();
-    Errors::display(); 
+        public function connect($telOrToken, $password=null, $memorize=false): void {
+            $card = $this->connexion->get($telOrToken, $password);
+            if ($card !== null) {
+                $_SESSION['auth'] = [
+                    'token' => $card->getToken(),
+                    'tokenValidity' => $card->getTokenValidity()
+                ];
+                if($memeorize){
+                    $expire = time() + 60 * 60 * 24 * 30;
+                    setcookie('auth[token]', $card->getToken(), [
+                        'expires'  => $expire,
+                        'path'     => '/',
+                        'secure'   => true,
+                        'httponly' => true,
+                        'samesite' => 'Strict'
+                    ]);
+                    setcookie('auth[tokenValidity]', $card->getTokenValidity(), [
+                        'expires'  => $expire,
+                        'path'     => '/',
+                        'secure'   => true,
+                        'httponly' => true,
+                        'samesite' => 'Strict'
+                    ]);
+                }
+                Errors::add("Vous êtes connecté", ErrorLevel::SUCCESS);
+            }
+            else{
+                Errors::add("Identifiants incorrects", ErrorLevel::ERROR);
+            }
+        }
+    }      
 ?>

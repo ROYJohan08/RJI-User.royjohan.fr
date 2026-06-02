@@ -244,7 +244,7 @@
 				$uid = (int)$payload['uid'];
 				$cid = (int)$payload['cid'];
 				$stmt = $this->Database->prepare("
-					SELECT cid, uid, telephone, lastConnexion, locked
+					SELECT cid, uid, token, telephone, lastConnexion, locked
 					FROM user_connexion
 					WHERE cid = :cid AND uid = :uid
 					LIMIT 1
@@ -258,6 +258,10 @@
 				}
 				if($this->isLocked($row['telephone'] ?? null)){
 					Errors::add("Trop de tentatives échouées, veuillez réessayer plus tard", ErrorLevel::WARNING);
+					return null;
+				}
+				if($row['token']===$telOrToken){
+					Errors::add("Le token ne correspond pas à l'utilisateur", ErrorLevel::WARNING);
 					return null;
 				}
 				$user = (new User($this->Database))->get($uid, null);

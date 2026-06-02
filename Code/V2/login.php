@@ -1,52 +1,15 @@
 <?php
-	session_start();
-	$libs = ["config","errors","connexion";
-	foreach($libs as $lib){
-		if(file_exists(__DIR__ . "/SOURCES/$lib.php")){
-			require_once(__DIR__ . "/SOURCES/$lib.php");
-		}
-	}
-	$config = new Config();
-	$database = new PDO(
-		"mysql:host=".$config->get("BDDHOST").";dbname=".$config->get("BDDBASE").";charset=utf8mb4",
-		$config->get("BDDUSERNAME"),
-		$config->get("BDDPASSWORD"),
-		[
-			PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-			PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-			PDO::ATTR_EMULATE_PREPARES   => false
-		]
-	);
-	$connexion = new Connexion($database, __DIR__ . $config->get("PRIVATEKEYPATH"), __DIR__ . $config->get("PUBLICKEYPATH"));
-	$connexion->checkDatabase();
-	$authenticated = false;
+	require_once(__DIR__ . "/SOURCES/controller.php");
+	$Controll = new Controller();
 	if (isset($_POST['connexion'])) {
 		if (!empty($_POST['username']) && !empty($_POST['password'])) {
-			$card = $connexion->connect($_POST['username'], $_POST['password']);
-			if ($card !== null) {
-				$_SESSION['auth'] = [
-					'token' => $card->getToken(),
-					'tokenValidity' => $card->getTokenValidity()
-				];
-				if (!empty($_POST['remember'])) {
-					$expire = time() + 60 * 60 * 24 * 30;
-					setcookie('auth[token]', $card->getToken(), [
-						'expires'  => $expire,
-						'path'     => '/',
-						'secure'   => true,
-						'httponly' => true,
-						'samesite' => 'Strict'
-					]);
-					setcookie('auth[tokenValidity]', $card->getTokenValidity(), [
-						'expires'  => $expire,
-						'path'     => '/',
-						'secure'   => true,
-						'httponly' => true,
-						'samesite' => 'Strict'
-					]);
-				}
-				Errors::add("Vous êtes connecté", ErrorLevel::SUCCESS,true);
-				$authenticated = true;
+			if($Controll->connect($_COOKIE['username'] ?? $_POST['username'], $_POST['password'], isset($_POST['remember']))){
+				Errors::add("Connexion réussie", ErrorLevel::SUCCESS);
+				header("Location: dashboard.php");
+				exit();
+			}
+			else{
+				Errors::add("Identifiant ou mot de passe incorrect", ErrorLevel::ERROR);
 			}
 		}
 	}
@@ -54,14 +17,10 @@
 		try {
 			$validity = new DateTimeImmutable($_SESSION['auth']['tokenValidity']);
 			if ($validity > new DateTimeImmutable()) {
-				if ($connexion->checkToken($_SESSION['auth']['token'])) {
-					Errors::add("Vous êtes connecté", ErrorLevel::SUCCESS);
-					$authenticated = true;
-				}
-				else{
-					if(!isset($_SESSION['try']['SESSION'])){$_SESSION['try']['SESSION']=0;}
-					$_SESSION['try']['SESSION']++;
-					$_SESSION['auth']=null;
+				if($Controll->connnect($_SESSION['auth']['token'])) {
+					Errors::add("Connexion réussie", ErrorLevel::SUCCESS);
+					header("Location: dashboard.php");
+					exit();
 				}
 			}
 			else {
@@ -76,19 +35,10 @@
 		try {
 			$validity = new DateTimeImmutable($_COOKIE['auth']['tokenValidity']);
 			if ($validity > new DateTimeImmutable()) {
-				if ($connexion->checkToken($_COOKIE['auth']['token'])) {
-					$_SESSION['auth'] = [
-						'token' => $_COOKIE['auth']['token'],
-						'tokenValidity' => $_COOKIE['auth']['tokenValidity']
-					];
-					Errors::add("Vous êtes connecté", ErrorLevel::SUCCESS);
-					$authenticated = true;
-				}
-				else{
-					if(!isset($_SESSION['try']['COOKIE'])){$_SESSION['try']['COOKIE']=0;}
-					$_SESSION['try']['COOKIE']++;
-					setcookie('auth[token]', '', time() - 3600, '/');
-					setcookie('auth[tokenValidity]', '', time() - 3600, '/');
+				if($Controll->connnect($_COOKIE['auth']['token'])) {
+					Errors::add("Connexion réussie", ErrorLevel::SUCCESS);
+					header("Location: dashboard.php");
+					exit();
 				}
 			}
 			else {
@@ -98,10 +48,6 @@
 		} 
 		catch (Throwable $e) {
 		}
-	}
-	if($authenticated){
-		header("Location: dashboard.php");
-		exit();
 	}
 
 ?>
@@ -128,7 +74,6 @@
 					<h1 class="card-title">Connexion</h1>
 					<p class="card-subtitle">Connectez-vous à votre espace ROYJohanInfo</p>
 				</div>
-				<?php if (!$authenticated): ?>
 				<form method="post" autocomplete="on">
 					<div class="field">
 						<label for="username">Identifiant</label>
@@ -167,11 +112,6 @@
 					</div>
 					<button type="submit" name="connexion" class="btn-submit">Se connecter</button>
 				</form>
-				<?php else: ?>
-				<div class="card-body">
-					<p class="success-message">Vous êtes déjà connecté.</p>
-				</div>
-				<?php endif; ?>
 				<div class="card-footer">
 					© <?= date('Y') ?> ROYJohanInfo
 				</div>
