@@ -10,7 +10,7 @@
 		if (!empty($_POST['username']) && !empty($_POST['password'])) {
 			$rem = isset($_POST['remember']) && $_POST['remember'] === 'on';
 			if($Controll->connect($_POST['username'], $_POST['password'], $rem)){
-				Errors::add("Connexion réussie", ErrorLevel::SUCCESS);
+				Errors::add("Connexion réussie", ErrorLevel::SUCCESS,true);
 				header("Location: dashboard.php");
 				exit();
 			}
@@ -25,7 +25,7 @@
 			$validity = new DateTimeImmutable($_SESSION['auth']['tokenValidity']);
 			if ($validity > new DateTimeImmutable()) {
 				if($Controll->connect($_SESSION['auth']['token'])) {
-					Errors::add("Connexion réussie", ErrorLevel::SUCCESS);
+					Errors::add("Connexion réussie", ErrorLevel::SUCCESS,true);
 					header("Location: dashboard.php");
 					exit();
 				}
@@ -47,7 +47,7 @@
 			$validity = new DateTimeImmutable($_COOKIE['auth']['tokenValidity']);
 			if ($validity > new DateTimeImmutable()) {
 				if($Controll->connnect($_COOKIE['auth']['token'])) {
-					Errors::add("Connexion réussie", ErrorLevel::SUCCESS);
+					Errors::add("Connexion réussie", ErrorLevel::SUCCESS,true);
 					header("Location: dashboard.php");
 					exit();
 				}
@@ -126,12 +126,6 @@
 				</form>
 				<div class="card-footer">
 					© <?= date('Y') ?> ROYJohanInfo
-					<?php echo "<br/>"; ?>
-					<?php print_r($_SESSION); ?>
-		<?php echo "<br/>"; ?>
-		<?php print_r($_COOKIE); ?>
-		<?php echo "<br/>"; ?>
-		<?php print_r($_POST); ?>
 				</div>
 			</div>
 		</div>

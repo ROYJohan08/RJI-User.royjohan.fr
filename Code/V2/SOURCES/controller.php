@@ -12,6 +12,7 @@
         private User $user;
         private Connexion $connexion;
         private PDO $database;
+        private ?UserCard $currentUser = null;
 
         public function __construct(){
             $this->config = new Config();
@@ -86,9 +87,17 @@
                     ]);
                 }
                 Errors::add("Vous êtes connecté Mr. " . $card->getUser()->getPrenom(), ErrorLevel::SUCCESS);
+                $this->currentUser = $card->getUser();
                 return true;
             }
             return false;
+        }
+
+        public function getUser($uid=null):UserCard|null{
+            if ($uid === null && $this->currentUser !== null) {
+                $uid = $this->currentUser->getUid();
+            }
+            return $this->user->get($uid);
         }
     }      
 ?>

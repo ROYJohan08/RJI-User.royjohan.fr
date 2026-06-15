@@ -1,5 +1,6 @@
 <?php
 	require_once(__DIR__ . "/errors.php");
+	require_once(__DIR__ . "/config.php");
 
 	enum Role: int {
 		case UTILISATEUR    = 1 << 0;
@@ -21,19 +22,20 @@
 			return $roles & ~$role->value;
 		}
 	}
+
 	class UserCard {
-		private ?int $uid = null;
-		private ?string $nom = null;
-		private ?string $prenom = null;
-		private ?string $telephone = null;
-		private ?string $email = null;
-		private ?string $adresse = null;
+		private ?int    $uid        = null;
+		private ?string $nom        = null;
+		private ?string $prenom     = null;
+		private ?string $telephone  = null;
+		private ?string $email      = null;
+		private ?string $adresse    = null;
 		private ?string $complement = null;
 		private ?string $codePostal = null;
-		private ?string $ville = null;
-		private ?string $wallet = null;
-		private ?string $siren = null;
-		private int $roles = 0;
+		private ?string $ville      = null;
+		private ?string $wallet     = null;
+		private ?string $siren      = null;
+		private int     $roles      = 0;
 
 		public function __construct(array $data = null) {
 			if ($data!=null && !empty($data)) {
@@ -61,18 +63,42 @@
 			}
 		}
 
-		public function getUid(): ?int { return $this->uid; }
-		public function getNom(): ?string { return $this->nom; }
-		public function getPrenom(): ?string { return $this->prenom; }
-		public function getTelephone(): ?string { return $this->telephone; }
-		public function getEmail(): ?string { return $this->email; }
-		public function getAdresse(): ?string { return $this->adresse; }
-		public function getComplement(): ?string { return $this->complement; }
-		public function getCodePostal(): ?string { return $this->codePostal; }
-		public function getVille(): ?string { return $this->ville; }
-		public function getWallet(): ?string { return $this->wallet; }
-		public function getSiren(): ?string { return $this->siren; }
-		public function getRoles(): int { return $this->roles; }
+		public function getUid(): ?int {
+			return $this->uid;
+		}
+		public function getNom(): ?string {
+			return $this->nom;
+		}
+		public function getPrenom(): ?string {
+			return $this->prenom;
+		}
+		public function getTelephone(): ?string {
+			return $this->telephone;
+		}
+		public function getEmail(): ?string {
+			return $this->email;
+		}
+		public function getAdresse(): ?string {
+			return $this->adresse;
+		}
+		public function getComplement(): ?string { 
+			return $this->complement;
+		}
+		public function getCodePostal(): ?string {
+			return $this->codePostal; 
+		}
+		public function getVille(): ?string { 
+			return $this->ville; 
+		}
+		public function getWallet(): ?string { 
+			return $this->wallet; 
+		}
+		public function getSiren(): ?string { 
+			return $this->siren; 
+		}
+		public function getRoles(): int {
+			return $this->roles;
+		}
 
 		public function setUid($v): bool {
 			if ($v === null) {
@@ -86,7 +112,6 @@
 			$this->uid = (int)$v;
 			return true;
 		}
-
 		public function setNom($v): bool {
 			if ($v === null) {
 				$this->nom = null;
@@ -99,7 +124,6 @@
 			$this->nom = strtoupper(trim($v));
 			return true;
 		}
-
 		public function setPrenom($v): bool {
 			if ($v === null) {
 				$this->prenom = null;
@@ -112,7 +136,6 @@
 			$this->prenom = ucfirst(strtolower(trim($v)));
 			return true;
 		}
-
 		public function setTelephone($v): bool {
 			if ($v === null) {
 				$this->telephone = null;
@@ -140,7 +163,6 @@
 			$this->telephone = $clean;
 			return true;
 		}
-
 		public function setEmail($v): bool {
 			if ($v === null) {
 				$this->email = null;
@@ -153,7 +175,6 @@
 			$this->email = strtolower(trim($v));
 			return true;
 		}
-
 		public function setAdresse($v): bool {
 			if ($v === null) {
 				$this->adresse = null;
@@ -166,7 +187,6 @@
 			$this->adresse = trim($v);
 			return true;
 		}
-
 		public function setComplement($v): bool {
 			if ($v === null) {
 				$this->complement = null;
@@ -179,7 +199,6 @@
 			$this->complement = trim($v);
 			return true;
 		}
-
 		public function setCodePostal($v): bool {
 			if ($v === null) {
 				$this->codePostal = null;
@@ -192,7 +211,6 @@
 			$this->codePostal = $v;
 			return true;
 		}
-
 		public function setVille($v): bool {
 			if ($v === null) {
 				$this->ville = null;
@@ -205,7 +223,6 @@
 			$this->ville = strtoupper(trim($v));
 			return true;
 		}
-
 		public function setWallet($v): bool {
 			if ($v === null) {
 				$this->wallet = null;
@@ -248,7 +265,6 @@
 			$this->wallet = $v;
 			return true;
 		}
-
 		public function setSiren($v): bool {
 			if ($v === null) {
 				$this->siren = null;
@@ -274,7 +290,6 @@
 			$this->siren = $clean;
 			return true;
 		}
-
 		public function setRoles(int $roles): bool {
 			if ($roles < 0) {
 				Errors::add("Roles invalide : $roles", ErrorLevel::ERROR);
@@ -291,7 +306,6 @@
 			$this->roles = $rolesValides;
 			return true;
 		}
-
 		public function setRole($value): bool {
 			if (is_int($value)) {
 				return $this->setRoles($value);
@@ -322,22 +336,17 @@
 			Errors::add("Format de rôle invalide : " . print_r($value, true), ErrorLevel::ERROR);
 			return false;
 		}
-
 		public function addRole(Role $role): bool {
 			$this->roles = Role::addRole($this->roles, $role);
 			return true;
 		}
-
 		public function removeRole(Role $role): bool {
 			$this->roles = Role::removeRole($this->roles, $role);
 			return true;
 		}
-
 		public function hasRole(Role $role): bool {
 			return Role::hasRole($this->roles, $role);
 		}
-
-
 
 		private function isValidLuhn(string $number): bool {
 			$sum = 0;
@@ -365,97 +374,38 @@
 		public function __construct(private PDO $Database){}
 
 		public function save(UserCard $cible, UserCard $modificateur): int {
-
 			if ($modificateur->getUid() === null) {
 				Errors::add("Authentification requise", ErrorLevel::ERROR);
 				return 0;
 			}
-
 			$isAdmin = (
 				$modificateur->hasRole(Role::ADMINISTRATEUR) ||
 				$modificateur->hasRole(Role::TECHNICIEN) ||
 				$modificateur->hasRole(Role::COMMERCIAL)
 			);
-
 			$isCreation = ($cible->getUid() === null);
-
 			if ($isCreation && !$isAdmin) {
 				Errors::add("Droits insuffisants pour créer un utilisateur", ErrorLevel::ERROR);
 				return 0;
 			}
-
 			if (!$isCreation && $modificateur->getUid() !== $cible->getUid() && !$isAdmin) {
 				Errors::add("Droits insuffisants pour modifier cet utilisateur", ErrorLevel::ERROR);
 				return 0;
 			}
-
 			if ($cible->getTelephone() === null) {
 				Errors::add("Impossible de créer ou modifier un utilisateur sans numéro de téléphone", ErrorLevel::ERROR);
 				return 0;
 			}
-
 			try {
 				if ($isCreation) {
-
-					$stmt = $this->Database->prepare("
-						INSERT INTO user_user 
-						(nom, prenom, adresse, complement, codePostal, ville, email, telephone, siren, wallet, roles)
-						VALUES 
-						(:nom, :prenom, :adresse, :complement, :codePostal, :ville, :email, :telephone, :siren, :wallet, :roles)
-					");
-
-					$stmt->execute([
-						':nom'        => $cible->getNom(),
-						':prenom'     => $cible->getPrenom(),
-						':adresse'    => $cible->getAdresse(),
-						':complement' => $cible->getComplement(),
-						':codePostal' => $cible->getCodePostal(),
-						':ville'      => $cible->getVille(),
-						':email'      => $cible->getEmail(),
-						':telephone'  => $cible->getTelephone(),
-						':siren'      => $cible->getSiren(),
-						':wallet'     => $cible->getWallet(),
-						':roles'      => $cible->getRoles()
-					]);
-
+					$stmt = $this->Database->prepare("INSERT INTO user_user (nom, prenom, adresse, complement, codePostal, ville, email, telephone, siren, wallet, roles) VALUES (:nom, :prenom, :adresse, :complement, :codePostal, :ville, :email, :telephone, :siren, :wallet, :roles)");
+					$stmt->execute([':nom' => $cible->getNom(), ':prenom' => $cible->getPrenom(), ':adresse' => $cible->getAdresse(), ':complement' => $cible->getComplement(), ':codePostal' => $cible->getCodePostal(), ':ville' => $cible->getVille(), ':email' => $cible->getEmail(), ':telephone' => $cible->getTelephone(), ':siren' => $cible->getSiren(),':wallet' => $cible->getWallet(),':roles' => $cible->getRoles()]);
 					$uid = (int)$this->Database->lastInsertId();
 					$cible->setUid($uid);
-
 					return $uid;
 				}
-
-				// UPDATE
-				$stmt = $this->Database->prepare("
-					UPDATE user_user SET
-						nom = :nom,
-						prenom = :prenom,
-						adresse = :adresse,
-						complement = :complement,
-						codePostal = :codePostal,
-						ville = :ville,
-						email = :email,
-						telephone = :telephone,
-						wallet = :wallet,
-						siren = :siren,
-						roles = :roles
-					WHERE uid = :uid
-				");
-
-				$stmt->execute([
-					':nom'        => $cible->getNom(),
-					':prenom'     => $cible->getPrenom(),
-					':adresse'    => $cible->getAdresse(),
-					':complement' => $cible->getComplement(),
-					':codePostal' => $cible->getCodePostal(),
-					':ville'      => $cible->getVille(),
-					':email'      => $cible->getEmail(),
-					':telephone'  => $cible->getTelephone(),
-					':wallet'     => $cible->getWallet(),
-					':siren'      => $cible->getSiren(),
-					':roles'      => $cible->getRoles(),
-					':uid'        => $cible->getUid()
-				]);
-
+				$stmt = $this->Database->prepare(" UPDATE user_user SET nom = :nom, prenom = :prenom, adresse = :adresse, complement = :complement, codePostal = :codePostal, ville = :ville, email = :email, telephone = :telephone, wallet = :wallet, siren = :siren, roles = :roles WHERE uid = :uid ");
+				$stmt->execute([ ':nom' => $cible->getNom(), ':prenom' => $cible->getPrenom(), ':adresse' => $cible->getAdresse(), ':complement' => $cible->getComplement(), ':codePostal' => $cible->getCodePostal(), ':ville' => $cible->getVille(), ':email' => $cible->getEmail(), ':telephone' => $cible->getTelephone(), ':wallet' => $cible->getWallet(), ':siren' => $cible->getSiren(), ':roles' => $cible->getRoles(),':uid' => $cible->getUid() ]);
 				return $cible->getUid();
 			}
 			catch (PDOException $e) {
@@ -465,12 +415,10 @@
 		}
 
 		public function get(int $uid, string $telephone = null): ?UserCard {
-
 			if ($uid === null && ($telephone === null || $telephone === "")) {
 				Errors::add("Aucun critère fourni pour récupérer un utilisateur", ErrorLevel::ERROR);
 				return null;
 			}
-
 			try {
 				if ($uid !== null) {
 					$stmt = $this->Database->prepare("SELECT * FROM user_user WHERE uid = :uid LIMIT 1");
@@ -481,21 +429,15 @@
 						Errors::add("Téléphone recherché invalide", ErrorLevel::ERROR);
 						return null;
 					}
-
 					$stmt = $this->Database->prepare("SELECT * FROM user_user WHERE telephone = :telephone LIMIT 1");
 					$stmt->execute([':telephone' => $normalizedTelephone]);
 				}
-
 				$row = $stmt->fetch(PDO::FETCH_ASSOC);
-
 				if (!$row) {
 					Errors::add("Aucun utilisateur trouvé", ErrorLevel::ERROR);
 					return null;
 				}
-
-				$user = new UserCard();
-				$user->hydrate($row);
-
+				$user = new UserCard($row);
 				return $user;
 			}
 			catch (PDOException $e) {
@@ -505,96 +447,54 @@
 		}
 
 		public function checkDatabase(): bool {
-
 			$table = "user_user";
-
-			// Vérification de la table
 			$stmt = $this->Database->prepare("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table");
 			$stmt->execute(['table' => $table]);
-
 			if ($stmt->rowCount() === 0) {
 				Errors::add("La table '$table' est absente", ErrorLevel::WARNING);
 				return $this->createDatabase();
 			}
-
-			// Colonnes attendues
-			$expectedColumns = [
-				'uid', 'nom', 'prenom', 'telephone', 'email',
-				'adresse', 'complement', 'codePostal', 'ville',
-				'wallet', 'siren', 'roles'
-			];
-
-			$columns = $this->Database
-				->query("SHOW COLUMNS FROM $table")
-				->fetchAll(PDO::FETCH_COLUMN);
-
+			$expectedColumns = [ 'uid', 'nom', 'prenom', 'telephone', 'email', 'adresse', 'complement', 'codePostal', 'ville', 'wallet', 'siren', 'roles'];
+			$columns = $this->Database->query("SHOW COLUMNS FROM $table")->fetchAll(PDO::FETCH_COLUMN);
 			foreach ($expectedColumns as $col) {
 				if (!in_array($col, $columns)) {
 					Errors::add("Colonne manquante : $col", ErrorLevel::WARNING);
 					return $this->createDatabase();
 				}
 			}
-
-			// Vérification du type de wallet
 			$stmt = $this->Database->query("SHOW COLUMNS FROM $table LIKE 'wallet'");
 			$walletInfo = $stmt->fetch(PDO::FETCH_ASSOC);
-
 			if (!$walletInfo) {
 				Errors::add("Colonne wallet introuvable", ErrorLevel::WARNING);
 				return $this->createDatabase();
 			}
-
 			$type = strtolower($walletInfo['Type']);
-
 			if (!str_contains($type, 'longtext')) {
 				Errors::add("La colonne wallet doit être LONGTEXT, trouvé : $type", ErrorLevel::WARNING);
 				return $this->createDatabase();
 			}
-
 			return true;
 		}
 
 		private function normalizeTelephone(string $telephone): ?string {
 			$clean = preg_replace('/\D+/', '', $telephone);
-
 			if (str_starts_with($clean, '0033')) {
 				$clean = '0' . substr($clean, 4);
 			} elseif (str_starts_with($clean, '33')) {
 				$clean = '0' . substr($clean, 2);
 			}
-
 			if (!preg_match('/^0[1-9]\d{8}$/', $clean)) {
 				return null;
 			}
-
 			return $clean;
 		}
 
 		private function createDatabase(bool $forceDrop = true): bool {
-
 			$table = "user_user";
-
 			if ($forceDrop) {
 				$this->Database->exec("DROP TABLE IF EXISTS $table");
 			}
-
-			$sql = "
-				CREATE TABLE IF NOT EXISTS $table (
-					uid INT PRIMARY KEY AUTO_INCREMENT,
-					nom VARCHAR(100),
-					prenom VARCHAR(100),
-					telephone VARCHAR(20),
-					email VARCHAR(255),
-					adresse VARCHAR(255),
-					complement VARCHAR(255),
-					codePostal VARCHAR(5),
-					ville VARCHAR(100),
-					wallet LONGTEXT,
-					siren VARCHAR(9),
-					roles INT NOT NULL DEFAULT 0
-				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-			";
-
+			$sql = "CREATE TABLE IF NOT EXISTS $table (uid INT PRIMARY KEY AUTO_INCREMENT, nom VARCHAR(100), prenom VARCHAR(100), telephone VARCHAR(20), email VARCHAR(255), adresse VARCHAR(255), complement VARCHAR(255), codePostal VARCHAR(5), ville VARCHAR(100), wallet LONGTEXT, siren VARCHAR(9), roles INT NOT NULL DEFAULT 0 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4; ";
 			try {
 				$this->Database->exec($sql);
 				return true;
