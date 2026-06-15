@@ -446,6 +446,37 @@
 			}
 		}
 
+		public function del(UserCard $cible, UserCard $modificateur): bool {
+			if ($modificateur->getUid() === null) {
+				Errors::add("Authentification requise", ErrorLevel::ERROR);
+				return false;
+			}
+			$isAdmin = (
+				$modificateur->hasRole(Role::ADMINISTRATEUR) ||
+				$modificateur->hasRole(Role::TECHNICIEN) ||
+				$modificateur->hasRole(Role::COMMERCIAL)
+			);
+			if (!$isAdmin) {
+				Errors::add("Droits insuffisants pour supprimer un utilisateur", ErrorLevel::ERROR);
+				return false;
+			}
+			if ($cible->getUid() === null) {
+				Errors::add("Impossible de supprimer un utilisateur sans UID", ErrorLevel::ERROR);
+				return false;
+			}
+			try {
+				$stmt = $this->Database->prepare("DELETE FROM user_user WHERE uid = :uid");
+				$stmt->execute([':uid' => $cible->getUid()]);
+				$stmt = $this->Database->prepare("DELETE FROM user_connexion WHERE uid = :uid");
+				$stmt->execute([':uid' => $cible->getUid()]);
+				return true;
+			}
+			catch (PDOException $e) {
+				Errors::add("Erreur SQL : " . $e->getMessage(), ErrorLevel::ERROR);
+				return false;
+			}
+		}
+
 		public function checkDatabase(): bool {
 			$table = "user_user";
 			$stmt = $this->Database->prepare("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table");
