@@ -346,9 +346,7 @@
 			}
 			try {
 				if ($isCreation) {
-
-					$stmt = $this->Database->prepare("
-						INSERT INTO user_connexion (uid, token, tokenValidity, tryHistory, hash, telephone) VALUES (:uid, :token, :tokenValidity, :tryHistory, :hash, :telephone)");
+					$stmt = $this->Database->prepare("INSERT INTO user_connexion (uid, token, tokenValidity, tryHistory, hash, telephone) VALUES (:uid, :token, :tokenValidity, :tryHistory, :hash, :telephone)");
 					$stmt->execute([':uid' => $cible->getUid(),':token' => $cible->getToken(),':tokenValidity' => $cible->getTokenValidity(),':tryHistory' => "",':hash' => $cible->getHash(),':telephone' => $cible->getTelephone()]);
 					$cid = (int)$this->Database->lastInsertId();
 					$cible->setCid($cid);
@@ -384,6 +382,30 @@
 
 		}
 
+		public function del(ConnexionCard $cible, UserCard $modificateur): bool {
+			if ($modificateur->getUid() === null) {
+				Errors::add("Authentification requise", ErrorLevel::ERROR);
+				return false;
+			}
+			$isAdmin = (
+				$modificateur->hasRole(Role::ADMINISTRATEUR) ||
+				$modificateur->hasRole(Role::TECHNICIEN) ||
+				$modificateur->hasRole(Role::COMMERCIAL)
+			);
+			if (!$isAdmin) {
+				Errors::add("Droits insuffisants pour supprimer cet utilisateur", ErrorLevel::ERROR);
+				return false;
+			}
+			try {
+				$stmt = $this->Database->prepare("DELETE FROM user_connexion WHERE cid = :cid");
+				$stmt->execute([':cid' => $cible->getCid()]);
+				return true;
+			}
+			catch (PDOException $e) {
+				Errors::add("Erreur SQL : " . $e->getMessage(), ErrorLevel::ERROR);
+				return false;
+			}
+		}
 		public function checkDatabase(): bool {
 			$table = 'user_connexion';
 			$stmt = $this->Database->query("SHOW TABLES LIKE '$table'");
