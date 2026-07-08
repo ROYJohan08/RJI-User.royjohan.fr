@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net">
   <diagram name="Page-1" id="HsNY-J_FP5UEuGH-R6k3">
-    <mxGraphModel dx="4385" dy="1878" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="2421" dy="834" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -189,7 +189,7 @@
         <mxCell id="X9oPL5KoNsQXG6nuF4nh-95" parent="X9oPL5KoNsQXG6nuF4nh-59" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ payedPrice: float" vertex="1">
           <mxGeometry height="26" width="140" y="182" as="geometry" />
         </mxCell>
-        <mxCell id="X9oPL5KoNsQXG6nuF4nh-67" parent="X9oPL5KoNsQXG6nuF4nh-59" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ fileLink: string" vertex="1">
+        <mxCell id="X9oPL5KoNsQXG6nuF4nh-67" parent="X9oPL5KoNsQXG6nuF4nh-59" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="+ filePath: string" vertex="1">
           <mxGeometry height="26" width="140" y="208" as="geometry" />
         </mxCell>
         <mxCell id="X9oPL5KoNsQXG6nuF4nh-63" edge="1" parent="1" source="X9oPL5KoNsQXG6nuF4nh-61" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="X9oPL5KoNsQXG6nuF4nh-42">
